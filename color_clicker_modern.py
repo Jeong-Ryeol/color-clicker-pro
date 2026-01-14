@@ -106,6 +106,7 @@ class ColorClickerApp(ctk.CTk):
         self.inv_trigger_modifier = ctk.StringVar(value="없음")  # 없음, Ctrl, Shift, Alt
         self.inv_last_trigger_time = 0  # 디바운스용
         # 딜레이 설정
+        self.inv_delay = ctk.DoubleVar(value=0.01)  # 기본 딜레이
         self.inv_move_duration = ctk.DoubleVar(value=0.15)  # 슬롯 간 이동 시간
         self.inv_panel_delay = ctk.DoubleVar(value=0.05)  # 설명 패널 대기
         self.inv_space_delay = ctk.DoubleVar(value=0.05)  # 스페이스바 간격
