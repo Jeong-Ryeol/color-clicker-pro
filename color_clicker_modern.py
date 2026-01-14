@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.1.9"
+VERSION = "1.2.0"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -3692,7 +3692,7 @@ class ColorClickerApp(ctk.CTk):
         # 커스텀 다이얼로그 생성
         dialog = ctk.CTkToplevel(self)
         dialog.title("업데이트 알림")
-        dialog.geometry("450x400")
+        dialog.geometry("450x500")
         dialog.transient(self)
         dialog.grab_set()
         dialog.resizable(False, False)
@@ -3700,44 +3700,47 @@ class ColorClickerApp(ctk.CTk):
         # 중앙 배치
         dialog.update_idletasks()
         x = self.winfo_x() + (self.winfo_width() - 450) // 2
-        y = self.winfo_y() + (self.winfo_height() - 400) // 2
-        dialog.geometry(f"450x400+{x}+{y}")
+        y = self.winfo_y() + (self.winfo_height() - 500) // 2
+        dialog.geometry(f"450x500+{x}+{y}")
 
         self.update_result = False
 
+        # 메인 컨테이너
+        main_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        main_frame.pack(fill="both", expand=True)
+
         # 헤더
-        header = ctk.CTkFrame(dialog, fg_color="#1a5f2a", corner_radius=0)
-        header.pack(fill="x", pady=(0, 10))
+        header = ctk.CTkFrame(main_frame, fg_color="#1a5f2a", corner_radius=0)
+        header.pack(fill="x")
         ctk.CTkLabel(header, text="새 버전이 있습니다!",
                      font=ctk.CTkFont(size=18, weight="bold"),
                      text_color="white").pack(pady=15)
 
         # 버전 정보
-        version_frame = ctk.CTkFrame(dialog, fg_color="transparent")
-        version_frame.pack(fill="x", padx=20)
-        ctk.CTkLabel(version_frame,
+        ctk.CTkLabel(main_frame,
                      text=f"v{VERSION}  →  v{latest_version}",
                      font=ctk.CTkFont(size=16, weight="bold"),
-                     text_color="#00aaff").pack()
+                     text_color="#00aaff").pack(pady=(15, 5))
 
         # 릴리즈 제목
-        ctk.CTkLabel(dialog, text=release_title,
+        ctk.CTkLabel(main_frame, text=release_title,
                      font=ctk.CTkFont(size=14, weight="bold"),
-                     text_color="#ffaa00").pack(pady=(15, 5))
+                     text_color="#ffaa00").pack(pady=(10, 5))
 
-        # 변경 사항 (스크롤 가능)
-        notes_frame = ctk.CTkFrame(dialog, fg_color="#2b2b2b", corner_radius=8)
-        notes_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        # 변경 사항 (고정 높이)
+        notes_frame = ctk.CTkFrame(main_frame, fg_color="#2b2b2b", corner_radius=8, height=200)
+        notes_frame.pack(fill="x", padx=20, pady=10)
+        notes_frame.pack_propagate(False)
 
-        notes_text = ctk.CTkTextbox(notes_frame, font=ctk.CTkFont(size=12),
+        notes_text = ctk.CTkTextbox(notes_frame, font=ctk.CTkFont(size=20),
                                      fg_color="#2b2b2b", wrap="word")
         notes_text.pack(fill="both", expand=True, padx=5, pady=5)
         notes_text.insert("1.0", release_body)
         notes_text.configure(state="disabled")
 
-        # 버튼 프레임
-        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
-        btn_frame.pack(fill="x", padx=20, pady=15)
+        # 버튼 프레임 (하단 고정)
+        btn_frame = ctk.CTkFrame(main_frame, fg_color="transparent", height=60)
+        btn_frame.pack(fill="x", padx=20, pady=20, side="bottom")
 
         def on_update():
             self.update_result = True
@@ -3747,14 +3750,14 @@ class ColorClickerApp(ctk.CTk):
             self.update_result = False
             dialog.destroy()
 
-        ctk.CTkButton(btn_frame, text="업데이트", width=120,
+        ctk.CTkButton(btn_frame, text="업데이트", width=150, height=40,
                       fg_color="#1a5f2a", hover_color="#2a7f3a",
                       font=ctk.CTkFont(size=14, weight="bold"),
-                      command=on_update).pack(side="left", expand=True, padx=5)
-        ctk.CTkButton(btn_frame, text="나중에", width=120,
+                      command=on_update).pack(side="left", expand=True, padx=10)
+        ctk.CTkButton(btn_frame, text="나중에", width=150, height=40,
                       fg_color="#555555", hover_color="#666666",
                       font=ctk.CTkFont(size=14),
-                      command=on_cancel).pack(side="right", expand=True, padx=5)
+                      command=on_cancel).pack(side="right", expand=True, padx=10)
 
         dialog.wait_window()
 
