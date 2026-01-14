@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.1.4"
+VERSION = "1.1.5"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -3767,37 +3767,33 @@ del /f /q "%~f0"
             with urllib.request.urlopen(req, timeout=15) as response:
                 html = response.read().decode('utf-8')
 
-                # HTML에서 모든 보스 정보 추출
-                # 패턴: 시간 -> 보스이름 -> 지역
-                pattern = r'(\d{1,2}/\d{1,2}/\d{4}\s+\d{1,2}:\d{2}\s*(?:AM|PM))</div><div[^>]*class="[^"]*text-3xl[^"]*"[^>]*>(Ashava|Avarice|Wandering Death|Azmodan)</div><div[^>]*>in\s+([^<]+)</div>'
-                matches = re.findall(pattern, html)
+                # __NUXT_DATA__에서 보스 정보 추출
+                nuxt_match = re.search(r'<script[^>]*id="__NUXT_DATA__"[^>]*>([^<]+)</script>', html)
 
-                if matches:
-                    now = datetime.now()
-                    next_boss = None
+                if nuxt_match:
+                    data_str = nuxt_match.group(1)
 
-                    # 미래의 첫 번째 보스 찾기
-                    for time_str, boss_name_en, zone in matches:
-                        try:
-                            boss_time = datetime.strptime(time_str.strip(), "%m/%d/%Y %I:%M %p")
-                            if boss_time > now:
-                                next_boss = (boss_time, boss_name_en, zone.strip())
+                    # ISO 시간과 보스 이름 추출
+                    start_times = re.findall(r'"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)"', data_str)
+                    bosses = re.findall(r'"(Ashava|Avarice|Wandering Death|Azmodan)"', data_str)
+
+                    if start_times and bosses:
+                        now = datetime.now(timezone.utc)
+
+                        # 미래의 첫 번째 보스 찾기
+                        for i, start_time_str in enumerate(start_times):
+                            if i >= len(bosses):
                                 break
-                        except:
-                            continue
-
-                    if next_boss:
-                        boss_time, boss_name_en, zone = next_boss
-                        self.world_boss_timestamp = boss_time
-                        boss_name_ko = self._get_korean_boss_name(boss_name_en)
-                        self.after(0, lambda b=boss_name_ko, z=zone: self._update_boss_ui(b, z))
+                            boss_time = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
+                            if boss_time > now:
+                                self.world_boss_timestamp = boss_time
+                                boss_name_ko = self._get_korean_boss_name(bosses[i])
+                                self.after(0, lambda b=boss_name_ko: self._update_boss_ui(b, ""))
+                                break
+                        else:
+                            self.after(0, lambda: self._update_boss_ui("정보 없음", ""))
                     else:
-                        # 모든 보스가 이미 지남 - 첫 번째 사용
-                        time_str, boss_name_en, zone = matches[0]
-                        boss_time = datetime.strptime(time_str.strip(), "%m/%d/%Y %I:%M %p")
-                        self.world_boss_timestamp = boss_time
-                        boss_name_ko = self._get_korean_boss_name(boss_name_en)
-                        self.after(0, lambda b=boss_name_ko, z=zone.strip(): self._update_boss_ui(b, z))
+                        self.after(0, lambda: self._update_boss_ui("정보 없음", ""))
                 else:
                     self.after(0, lambda: self._update_boss_ui("정보 없음", ""))
 
@@ -3843,7 +3839,7 @@ del /f /q "%~f0"
     def update_world_boss_timer(self):
         """월드 보스 남은 시간 업데이트 (1초 간격)"""
         if self.world_boss_timestamp:
-            now = datetime.now()
+            now = datetime.now(timezone.utc)
             diff = self.world_boss_timestamp - now
 
             if diff.total_seconds() > 0:
