@@ -25,7 +25,7 @@ GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 try:
     import pyautogui
     import keyboard
-    from PIL import ImageGrab, Image
+    from PIL import ImageGrab, Image, ImageTk
     import win32api
     import win32con
     import ctypes
@@ -71,8 +71,8 @@ class ColorClickerApp(ctk.CTk):
         self.exclude_colors = [
             ["#37EAD5", "#37EAD5"],
         ]
-        self.tolerance = ctk.IntVar(value=4)
-        self.color_tolerance = ctk.IntVar(value=4)  # 색상 허용 범위
+        self.tolerance = ctk.IntVar(value=0)
+        self.color_tolerance = ctk.IntVar(value=0)  # 색상 허용 범위
         self.exclude_range = ctk.IntVar(value=3)
         self.trigger_key = ctk.StringVar(value="f4")
         self.trigger_modifier = ctk.StringVar(value="없음")  # 없음, Ctrl, Shift, Alt
@@ -4377,7 +4377,7 @@ class ColorClickerApp(ctk.CTk):
 
             self.colors = config.get('colors', self.colors)
             self.exclude_colors = config.get('exclude_colors', self.exclude_colors)
-            self.tolerance.set(config.get('tolerance', 4))
+            self.tolerance.set(config.get('tolerance', 0))
             self.exclude_range.set(config.get('exclude_range', 3))
             self.trigger_key.set(config.get('trigger_key', 'f4'))
             self.trigger_modifier.set(config.get('trigger_modifier', '없음'))
