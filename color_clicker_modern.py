@@ -570,6 +570,21 @@ class ColorClickerApp(ctk.CTk):
                                        font=ctk.CTkFont(size=10), text_color="#888888")
         self.area_label.pack(pady=2)
 
+    def toggle_area_mode(self):
+        """전체 화면 모드 토글"""
+        if self.use_full_screen.get():
+            self.area_btn.configure(state="disabled")
+            self.area_label.configure(text="영역: 전체 화면")
+        else:
+            self.area_btn.configure(state="normal")
+            x1, y1 = self.search_x1.get(), self.search_y1.get()
+            x2, y2 = self.search_x2.get(), self.search_y2.get()
+            self.area_label.configure(text=f"영역: ({x1},{y1}) ~ ({x2},{y2})")
+
+    def start_area_selection(self):
+        """검색 영역 선택 시작"""
+        self.select_area()
+
     def create_control_section_content(self, parent):
         """컨트롤 섹션 내용"""
         self.start_btn = ctk.CTkButton(parent, text="▶ 시작", height=40,
