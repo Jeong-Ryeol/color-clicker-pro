@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.6.7"
+VERSION = "1.6.8"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -166,6 +166,7 @@ class ColorClickerApp(ctk.CTk):
         self.overlay_y = ctk.IntVar(value=100)
         self.overlay_alpha = ctk.DoubleVar(value=0.85)  # 투명도 (0.0~1.0)
         self.overlay_labels = {}  # 오버레이 라벨 참조 저장
+        self.overlay_name_labels = {}  # 오버레이 기능명 라벨 참조 저장
 
         # === 월드보스 알림 ===
         self.boss_alert_enabled = ctk.BooleanVar(value=True)
@@ -939,10 +940,11 @@ class ColorClickerApp(ctk.CTk):
              "4. 핫키 누르면 설정한 키 빠르게 반복\n"
              "5. 다시 핫키 누르면 멈춤"),
             ("🛑 긴급 정지",
-             "모든 기능을 한번에 끕니다.\n\n"
+             "실행 중인 클릭/매크로를 즉시 멈춥니다.\n\n"
              "• 기본 키: F12\n"
              "• Home 탭에서 키 변경 가능\n"
-             "• 뭔가 잘못되면 바로 누르세요!"),
+             "• 기능은 켜진 상태로 유지됩니다\n"
+             "• 버그로 클릭이 안 멈출 때 사용!"),
         ]
 
         for title, content in help_sections:
@@ -2130,7 +2132,7 @@ class ColorClickerApp(ctk.CTk):
         ctk.CTkButton(emergency_inner, text="변경", width=60,
                       command=self.change_emergency_key).pack(side="left")
 
-        ctk.CTkLabel(emergency_frame, text="이 키를 누르면 모든 기능이 즉시 중지됩니다",
+        ctk.CTkLabel(emergency_frame, text="실행 중인 클릭/매크로 동작을 즉시 멈춥니다 (기능은 유지)",
                      text_color="gray", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(pady=5)
 
         # === 자동 시작 설정 ===
@@ -2260,40 +2262,25 @@ class ColorClickerApp(ctk.CTk):
         dialog.protocol("WM_DELETE_WINDOW", on_close)
 
     def on_emergency_stop(self, event=None):
-        """긴급 정지 - 모든 기능 즉시 중지"""
-        # 모든 running 상태 강제 중지
+        """긴급 정지 - 실행 중인 클릭/매크로 동작만 즉시 중지 (기능은 유지)"""
+        # 실행 중인 동작만 중지 (기능 ON/OFF 상태는 유지)
+        self.detection_active = False
+        self.inv_cleanup_active = False
+        self.discard_active = False
+        self.sell_active = False
+        self.consume_active = False
+
+        # 상태 라벨만 업데이트 (대기 중으로)
         if self.is_running:
-            self.is_running = False
-            self.detection_active = False
-            self.start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
-            self.status_label.configure(text="⏸️ 대기 중")
-
+            self.status_label.configure(text=f"🔴 [{self.trigger_key.get().upper()}] 키로 시작")
         if self.inv_running:
-            self.inv_running = False
-            self.inv_cleanup_active = False
-            self.inv_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
-            self.inv_status_label.configure(text="⏸️ 대기 중")
-
+            self.inv_status_label.configure(text=f"🔴 [{self.inv_trigger_key.get().upper()}] 키로 시작")
         if self.discard_running:
-            self.discard_running = False
-            self.discard_active = False
-            self.discard_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
-            self.discard_status_label.configure(text="⏸️ 대기 중")
-
+            self.discard_status_label.configure(text=f"🔴 [{self.discard_trigger_key.get().upper()}] 키로 시작")
         if self.sell_running:
-            self.sell_running = False
-            self.sell_active = False
-            self.sell_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
-            self.sell_status_label.configure(text="⏸️ 대기 중")
-
+            self.sell_status_label.configure(text=f"🔴 [{self.sell_trigger_key.get().upper()}] 키로 시작")
         if self.consume_running:
-            self.consume_running = False
-            self.consume_active = False
-            self.consume_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
-            self.consume_status_label.configure(text="⏸️ 대기 중")
-
-        # Home 탭 상태 즉시 업데이트
-        self.after(10, self.update_home_status_now)
+            self.consume_status_label.configure(text=f"🔴 [{self.consume_trigger_key.get().upper()}] 키로 시작")
 
     def apply_auto_start(self):
         """자동 시작 설정 적용"""
@@ -2902,6 +2889,14 @@ class ColorClickerApp(ctk.CTk):
                 else:
                     label.configure(text="● OFF", fg='#666666')
 
+            # 오버레이 기능명 색상 업데이트 (ON: 빨간색, OFF: 흰색)
+            if hasattr(self, 'overlay_name_labels') and attr in self.overlay_name_labels:
+                name_label = self.overlay_name_labels[attr]
+                if is_on:
+                    name_label.configure(fg='#ff4444')  # 빨간색
+                else:
+                    name_label.configure(fg='#ffffff')  # 흰색
+
         # UI 즉시 반영
         self.update_idletasks()
 
@@ -2966,14 +2961,17 @@ class ColorClickerApp(ctk.CTk):
         ]
 
         self.overlay_labels = {}
+        self.overlay_name_labels = {}  # 기능명 라벨 저장
 
         for name, key_var, mod_var, attr in functions:
             row = tk.Frame(main_frame, bg=bg_color)
             row.pack(fill='x', pady=1)
 
-            # 기능명
-            tk.Label(row, text=name, bg=bg_color, fg='#ffffff', width=5, anchor='w',
-                     font=('맑은 고딕', 9)).pack(side='left')
+            # 기능명 (ON일 때 빨간색, OFF일 때 흰색)
+            name_label = tk.Label(row, text=name, bg=bg_color, fg='#ffffff', width=5, anchor='w',
+                                  font=('맑은 고딕', 9))
+            name_label.pack(side='left')
+            self.overlay_name_labels[attr] = name_label
 
             # 핫키
             mod = mod_var.get()
@@ -3041,6 +3039,7 @@ class ColorClickerApp(ctk.CTk):
                 pass
             self.overlay_window = None
             self.overlay_labels = {}
+            self.overlay_name_labels = {}
 
     def update_overlay(self):
         """오버레이 상태 업데이트 (200ms 간격)"""
@@ -3056,12 +3055,21 @@ class ColorClickerApp(ctk.CTk):
         }
 
         for attr, is_on in states.items():
+            # 상태 라벨 업데이트
             if attr in self.overlay_labels:
                 label = self.overlay_labels[attr]
                 if is_on:
                     label.configure(text="● ON", fg='#00FF00')
                 else:
                     label.configure(text="● OFF", fg='#666666')
+
+            # 기능명 라벨 색상 업데이트 (ON: 빨간색, OFF: 흰색)
+            if attr in self.overlay_name_labels:
+                name_label = self.overlay_name_labels[attr]
+                if is_on:
+                    name_label.configure(fg='#ff4444')  # 빨간색
+                else:
+                    name_label.configure(fg='#ffffff')  # 흰색
 
         # 200ms 후 다시 업데이트
         if self.overlay_window:
