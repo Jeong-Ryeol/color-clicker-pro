@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.6.2"
+VERSION = "1.6.4"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -49,7 +49,14 @@ ctk.set_default_color_theme("blue")
 # 기본 폰트 설정 (한국어 가독성)
 DEFAULT_FONT = "맑은 고딕"
 
-CONFIG_FILE = "color_clicker_config.json"
+# 설정 파일 경로 (EXE와 같은 폴더에 저장)
+if getattr(sys, 'frozen', False):
+    # PyInstaller로 빌드된 EXE
+    APP_DIR = os.path.dirname(sys.executable)
+else:
+    # 소스 코드 실행
+    APP_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(APP_DIR, "color_clicker_config.json")
 
 
 class ColorClickerApp(ctk.CTk):
@@ -424,7 +431,7 @@ class ColorClickerApp(ctk.CTk):
 
         ctk.CTkButton(save_box, text="저장", command=self.save_config,
                       fg_color="#007bff", hover_color="#0056b3", height=30).pack(fill="x", pady=1)
-        ctk.CTkButton(save_box, text="불러오기", command=self.load_config,
+        ctk.CTkButton(save_box, text="불러오기", command=lambda: self.load_config(show_message=True),
                       fg_color="#17a2b8", hover_color="#138496", height=30).pack(fill="x", pady=1)
         ctk.CTkButton(save_box, text="📤 내보내기", command=self.export_config,
                       fg_color="#fd7e14", hover_color="#e96b00", height=30).pack(fill="x", pady=1)
@@ -881,78 +888,77 @@ class ColorClickerApp(ctk.CTk):
         scroll = ctk.CTkScrollableFrame(parent, fg_color="transparent")
         scroll.pack(fill="both", expand=True, padx=5, pady=5)
 
+        # 제목
         ctk.CTkLabel(scroll, text="📖 사용법 안내",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=18, weight="bold")).pack(pady=10)
 
         ctk.CTkLabel(scroll, text="💡 모든 기능은 핫키를 다시 누르면 멈춥니다!",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold"),
-                     text_color="#00ff00", wraplength=400).pack(pady=5)
+                     text_color="#00ff00").pack(pady=5)
 
-        # 벨리알
-        box1 = self.create_section_box(scroll, "👁️ 벨리알 (아이템 줍기)", "")
-        ctk.CTkLabel(box1, text="바닥에 떨어진 아이템을 자동으로 클릭해서 줍습니다.\n\n"
-                     "1. [화면추출] 버튼 클릭\n"
-                     "2. 게임 화면에서 아이템 이름 색상 클릭\n"
-                     "3. [시작] 버튼으로 기능 켜기\n"
-                     "4. 게임에서 핫키 누르면 자동 줍기 시작\n"
-                     "5. 다시 핫키 누르면 멈춤\n\n"
-                     "※ 제외 색상: 줍지 말아야 할 아이템 색상 등록",
-                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
-                     justify="left", wraplength=380).pack(anchor="w", padx=10, pady=5)
+        # 사용법 섹션들
+        help_sections = [
+            ("👁️ 벨리알 (아이템 줍기)",
+             "바닥에 떨어진 아이템을 자동으로 클릭해서 줍습니다.\n\n"
+             "1. [화면추출] 버튼 클릭\n"
+             "2. 게임 화면에서 아이템 이름 색상 클릭\n"
+             "3. [시작] 버튼으로 기능 켜기\n"
+             "4. 게임에서 핫키 누르면 자동 줍기 시작\n"
+             "5. 다시 핫키 누르면 멈춤\n\n"
+             "※ 제외 색상: 줍지 말아야 할 아이템 색상 등록"),
+            ("✨ 신화장난꾸러기 (인벤 정리)",
+             "인벤토리에서 신화 장난꾸러기만 즐겨찾기 등록합니다.\n\n"
+             "1. [추출] 버튼으로 보존할 색상 등록\n"
+             "2. [영역 설정]으로 인벤토리 영역 드래그\n"
+             "3. [시작] 버튼으로 기능 켜기\n"
+             "4. 게임에서 핫키 누르면 자동 즐겨찾기 시작\n"
+             "5. 다시 핫키 누르면 멈춤\n\n"
+             "※ 스페이스바로 즐겨찾기 등록됩니다"),
+            ("🗑️ 아이템 버리기",
+             "인벤토리의 아이템을 Ctrl+클릭으로 버립니다.\n\n"
+             "1. [시작] 버튼으로 기능 켜기\n"
+             "2. 게임에서 인벤토리 열기\n"
+             "3. 버릴 아이템 위에 마우스 올리기\n"
+             "4. 핫키 누르면 Ctrl+클릭 반복 시작\n"
+             "5. 다시 핫키 누르면 멈춤"),
+            ("💰 아이템 팔기",
+             "상점에서 아이템을 우클릭으로 판매합니다.\n\n"
+             "1. [시작] 버튼으로 기능 켜기\n"
+             "2. 게임에서 상점 열기\n"
+             "3. 팔 아이템 위에 마우스 올리기\n"
+             "4. 핫키 누르면 우클릭 반복 시작\n"
+             "5. 다시 핫키 누르면 멈춤"),
+            ("🍖 아이템 먹기",
+             "설정한 키를 빠르게 반복합니다.\n\n"
+             "1. [누를 키]에서 사용할 키 설정 (예: 우클릭)\n"
+             "2. [시작] 버튼으로 기능 켜기\n"
+             "3. 사용할 아이템 위에 마우스 올리기\n"
+             "4. 핫키 누르면 설정한 키 빠르게 반복\n"
+             "5. 다시 핫키 누르면 멈춤"),
+            ("🛑 긴급 정지",
+             "모든 기능을 한번에 끕니다.\n\n"
+             "• 기본 키: F12\n"
+             "• Home 탭에서 키 변경 가능\n"
+             "• 뭔가 잘못되면 바로 누르세요!"),
+        ]
 
-        # 신화장난꾸러기
-        box2 = self.create_section_box(scroll, "✨ 신화장난꾸러기 (인벤 정리)", "")
-        ctk.CTkLabel(box2, text="인벤토리에서 신화 장난꾸러기만 즐겨찾기 등록합니다.\n\n"
-                     "1. [추출] 버튼으로 보존할 색상 등록\n"
-                     "2. [영역 설정]으로 인벤토리 영역 드래그\n"
-                     "3. [시작] 버튼으로 기능 켜기\n"
-                     "4. 게임에서 핫키 누르면 자동 즐겨찾기 시작\n"
-                     "5. 다시 핫키 누르면 멈춤\n\n"
-                     "※ 스페이스바로 즐겨찾기 등록됩니다",
-                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
-                     justify="left", wraplength=380).pack(anchor="w", padx=10, pady=5)
+        for title, content in help_sections:
+            # 섹션 박스
+            box = ctk.CTkFrame(scroll, fg_color="#363636", corner_radius=10)
+            box.pack(fill="x", pady=8, padx=5)
 
-        # 버리기
-        box3 = self.create_section_box(scroll, "🗑️ 아이템 버리기", "")
-        ctk.CTkLabel(box3, text="인벤토리의 아이템을 Ctrl+클릭으로 버립니다.\n\n"
-                     "1. [시작] 버튼으로 기능 켜기\n"
-                     "2. 게임에서 인벤토리 열기\n"
-                     "3. 버릴 아이템 위에 마우스 올리기\n"
-                     "4. 핫키 누르면 Ctrl+클릭 반복 시작\n"
-                     "5. 다시 핫키 누르면 멈춤",
-                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
-                     justify="left", wraplength=380).pack(anchor="w", padx=10, pady=5)
+            # 헤더
+            header = ctk.CTkFrame(box, fg_color="#1a5f2a", corner_radius=8)
+            header.pack(fill="x", padx=5, pady=5)
+            ctk.CTkLabel(header, text=title,
+                         font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
+                         text_color="white").pack(side="left", padx=15, pady=8)
 
-        # 팔기
-        box4 = self.create_section_box(scroll, "💰 아이템 팔기", "")
-        ctk.CTkLabel(box4, text="상점에서 아이템을 우클릭으로 판매합니다.\n\n"
-                     "1. [시작] 버튼으로 기능 켜기\n"
-                     "2. 게임에서 상점 열기\n"
-                     "3. 팔 아이템 위에 마우스 올리기\n"
-                     "4. 핫키 누르면 우클릭 반복 시작\n"
-                     "5. 다시 핫키 누르면 멈춤",
-                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
-                     justify="left", wraplength=380).pack(anchor="w", padx=10, pady=5)
-
-        # 먹기
-        box5 = self.create_section_box(scroll, "🍖 아이템 먹기", "")
-        ctk.CTkLabel(box5, text="설정한 키를 빠르게 반복합니다.\n\n"
-                     "1. [누를 키]에서 사용할 키 설정 (예: 우클릭)\n"
-                     "2. [시작] 버튼으로 기능 켜기\n"
-                     "3. 사용할 아이템 위에 마우스 올리기\n"
-                     "4. 핫키 누르면 설정한 키 빠르게 반복\n"
-                     "5. 다시 핫키 누르면 멈춤",
-                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
-                     justify="left", wraplength=380).pack(anchor="w", padx=10, pady=5)
-
-        # 긴급 정지
-        box6 = self.create_section_box(scroll, "🛑 긴급 정지", "")
-        ctk.CTkLabel(box6, text="모든 기능을 한번에 끕니다.\n\n"
-                     "• 기본 키: F12\n"
-                     "• Home 탭에서 키 변경 가능\n"
-                     "• 뭔가 잘못되면 바로 누르세요!",
-                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
-                     justify="left", wraplength=380).pack(anchor="w", padx=10, pady=5)
+            # 내용 (tk.Label 사용 - 높이 자동 조절)
+            content_frame = ctk.CTkFrame(box, fg_color="transparent")
+            content_frame.pack(fill="x", padx=10, pady=(0, 10))
+            tk.Label(content_frame, text=content, font=(DEFAULT_FONT, 10),
+                     fg="white", bg="#363636", justify="left", anchor="w").pack(fill="x", padx=5, pady=5)
 
     # === 패치노트 컨텐츠 ===
     def create_patch_content(self, parent):
@@ -4543,12 +4549,21 @@ class ColorClickerApp(ctk.CTk):
         except Exception as e:
             messagebox.showerror("오류", f"저장 실패: {e}")
 
-    def load_config(self):
-        if not os.path.exists(CONFIG_FILE):
-            return
+    def load_config(self, show_message=False):
+        # 설정 파일 찾기 (새 경로 우선, 없으면 현재 디렉토리)
+        config_path = CONFIG_FILE
+        if not os.path.exists(config_path):
+            # 현재 작업 디렉토리에서 찾기 (이전 버전 호환)
+            old_path = "color_clicker_config.json"
+            if os.path.exists(old_path):
+                config_path = old_path
+            else:
+                if show_message:
+                    messagebox.showwarning("알림", "저장된 설정 파일이 없습니다.")
+                return
 
         try:
-            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+            with open(config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
 
             self.colors = config.get('colors', self.colors)
@@ -4671,7 +4686,12 @@ class ColorClickerApp(ctk.CTk):
             self.update_color_list()
             self.update_exclude_list()
             self.setup_hotkey()  # 핫키 재설정
+
+            if show_message:
+                messagebox.showinfo("불러오기", "설정을 불러왔습니다!")
         except Exception as e:
+            if show_message:
+                messagebox.showerror("오류", f"설정 불러오기 실패: {e}")
             print(f"Config load error: {e}")
 
     # ============================================================
