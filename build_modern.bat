@@ -1,7 +1,7 @@
 @echo off
 cd /d "%~dp0"
 echo ========================================
-echo   Color Clicker Pro (Modern UI) Build
+echo   Wonryeol Helper Build
 echo ========================================
 echo.
 
@@ -14,11 +14,11 @@ python -m pip install pyinstaller
 
 echo.
 echo [3/3] Building EXE...
-python -m PyInstaller --onefile --noconsole --name "ColorClickerPro" --hidden-import=numpy --hidden-import=PIL._tkinter_finder color_clicker_modern.py
+python -m PyInstaller --onefile --noconsole --name "WonryeolHelper" --hidden-import=numpy --hidden-import=PIL._tkinter_finder color_clicker_modern.py
 
 echo.
 echo ========================================
 echo   Build Complete!
-echo   dist\ColorClickerPro.exe
+echo   dist\WonryeolHelper.exe
 echo ========================================
 pause

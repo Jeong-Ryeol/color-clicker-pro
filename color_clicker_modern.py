@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -53,7 +53,7 @@ class ColorClickerApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("🎯 Color Clicker Pro")
+        self.title("🎯 Wonryeol Helper")
         self.geometry("550x1000")
         self.resizable(False, False)
 
@@ -182,7 +182,7 @@ class ColorClickerApp(ctk.CTk):
 
     def setup_ui(self):
         # === 헤더 ===
-        header = ctk.CTkLabel(self, text="🎯 Color Clicker Pro",
+        header = ctk.CTkLabel(self, text="🎯 Wonryeol Helper",
                               font=ctk.CTkFont(size=24, weight="bold"))
         header.pack(pady=(10, 5))
 
@@ -1151,6 +1151,9 @@ class ColorClickerApp(ctk.CTk):
                      font=ctk.CTkFont(size=20, weight="bold")).pack(pady=10)
         ctk.CTkLabel(home_frame, text="모든 기능을 한눈에 관리",
                      text_color="gray").pack()
+        ctk.CTkLabel(home_frame, text=f"v{VERSION}",
+                     font=ctk.CTkFont(size=12),
+                     text_color="#00aaff").pack(pady=(5, 0))
 
         # === 전체 시작/중지 버튼 (큰 버튼) ===
         all_ctrl_frame = ctk.CTkFrame(home_frame)
@@ -1956,7 +1959,7 @@ class ColorClickerApp(ctk.CTk):
         main_frame.pack(fill='both', expand=True)
 
         # 타이틀
-        title = tk.Label(main_frame, text="Color Clicker", bg=bg_color, fg='#00aaff',
+        title = tk.Label(main_frame, text="Wonryeol Helper", bg=bg_color, fg='#00aaff',
                          font=('맑은 고딕', 9, 'bold'))
         title.pack(pady=(0, 5))
 
@@ -3592,7 +3595,7 @@ class ColorClickerApp(ctk.CTk):
         """시작 시 업데이트 확인 (백그라운드 스레드에서 실행)"""
         try:
             req = urllib.request.Request(GITHUB_API)
-            req.add_header('User-Agent', 'ColorClickerPro')
+            req.add_header('User-Agent', 'WonryeolHelper')
 
             with urllib.request.urlopen(req, timeout=10) as response:
                 data = json.loads(response.read().decode())
@@ -3651,8 +3654,8 @@ class ColorClickerApp(ctk.CTk):
             if getattr(sys, 'frozen', False):
                 current_exe = sys.executable
                 exe_dir = os.path.dirname(current_exe)
-                new_exe = os.path.join(exe_dir, 'ColorClickerPro_new.exe')
-                backup_exe = os.path.join(exe_dir, 'ColorClickerPro_backup.exe')
+                new_exe = os.path.join(exe_dir, 'WonryeolHelper_new.exe')
+                backup_exe = os.path.join(exe_dir, 'WonryeolHelper_backup.exe')
             else:
                 self.after(0, lambda: messagebox.showinfo("알림",
                     "소스 코드 실행 중에는 자동 업데이트가 지원되지 않습니다.\nGitHub에서 최신 버전을 다운로드하세요."))
@@ -3669,18 +3672,26 @@ class ColorClickerApp(ctk.CTk):
                     except:
                         pass
 
-            # 다운로드
-            urllib.request.urlretrieve(download_url, new_exe)
+            # 다운로드 (GitHub 리다이렉트 처리)
+            req = urllib.request.Request(download_url)
+            req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')
+            req.add_header('Accept', 'application/octet-stream')
 
-            # 다운로드 검증 (최소 1MB)
-            if os.path.getsize(new_exe) < 1000000:
-                raise Exception("다운로드된 파일이 손상되었습니다.")
+            with urllib.request.urlopen(req, timeout=180) as response:
+                file_data = response.read()
+                with open(new_exe, 'wb') as f:
+                    f.write(file_data)
+
+            # 다운로드 검증 (최소 10MB)
+            file_size = os.path.getsize(new_exe)
+            if file_size < 10000000:
+                raise Exception(f"파일이 불완전합니다 ({file_size // 1048576}MB). 인터넷 연결을 확인하세요.")
 
             # 배치 스크립트로 교체 (앱 종료 후 실행)
             batch_content = f'''@echo off
 chcp 65001 > nul
 echo ========================================
-echo   Color Clicker Pro 업데이트 중...
+echo   Wonryeol Helper 업데이트 중...
 echo ========================================
 timeout /t 3 /nobreak > nul
 
