@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.1.3"
+VERSION = "1.1.4"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -3718,10 +3718,11 @@ if errorlevel 1 (
 
 echo ========================================
 echo   업데이트 완료!
+echo   5초 후 프로그램이 시작됩니다...
 echo ========================================
-timeout /t 2 /nobreak > nul
+timeout /t 5 /nobreak
 start "" "{current_exe}"
-timeout /t 1 /nobreak > nul
+timeout /t 2 /nobreak > nul
 del /f /q "{backup_exe}" 2>nul
 del /f /q "%~f0"
 '''
@@ -3766,30 +3767,37 @@ del /f /q "%~f0"
             with urllib.request.urlopen(req, timeout=15) as response:
                 html = response.read().decode('utf-8')
 
-                # HTML에서 첫 번째 보스 정보 추출
+                # HTML에서 모든 보스 정보 추출
                 # 패턴: 시간 -> 보스이름 -> 지역
-                # 예: "1/14/2026 4:15 AM</div><div class="text-3xl mt-2 font-bold"...>Azmodan</div><div...>in Fractured Peaks</div>"
                 pattern = r'(\d{1,2}/\d{1,2}/\d{4}\s+\d{1,2}:\d{2}\s*(?:AM|PM))</div><div[^>]*class="[^"]*text-3xl[^"]*"[^>]*>(Ashava|Avarice|Wandering Death|Azmodan)</div><div[^>]*>in\s+([^<]+)</div>'
-                match = re.search(pattern, html)
+                matches = re.findall(pattern, html)
 
-                if match:
-                    time_str = match.group(1)  # "1/14/2026 11:30 AM"
-                    boss_name_en = match.group(2)  # "Ashava"
-                    zone = match.group(3).strip()  # "Fractured Peaks"
+                if matches:
+                    now = datetime.now()
+                    next_boss = None
 
-                    # 시간 파싱 (미국 시간 -> UTC -> 한국 시간)
-                    from datetime import datetime, timezone, timedelta
+                    # 미래의 첫 번째 보스 찾기
+                    for time_str, boss_name_en, zone in matches:
+                        try:
+                            boss_time = datetime.strptime(time_str.strip(), "%m/%d/%Y %I:%M %p")
+                            if boss_time > now:
+                                next_boss = (boss_time, boss_name_en, zone.strip())
+                                break
+                        except:
+                            continue
 
-                    # helltides.com은 사용자 로컬 시간으로 표시됨
-                    # 파싱하여 timestamp 저장
-                    boss_time = datetime.strptime(time_str, "%m/%d/%Y %I:%M %p")
-                    self.world_boss_timestamp = boss_time
-
-                    # 보스 이름 한글화
-                    boss_name_ko = self._get_korean_boss_name(boss_name_en)
-
-                    # UI 업데이트
-                    self.after(0, lambda b=boss_name_ko, z=zone: self._update_boss_ui(b, z))
+                    if next_boss:
+                        boss_time, boss_name_en, zone = next_boss
+                        self.world_boss_timestamp = boss_time
+                        boss_name_ko = self._get_korean_boss_name(boss_name_en)
+                        self.after(0, lambda b=boss_name_ko, z=zone: self._update_boss_ui(b, z))
+                    else:
+                        # 모든 보스가 이미 지남 - 첫 번째 사용
+                        time_str, boss_name_en, zone = matches[0]
+                        boss_time = datetime.strptime(time_str.strip(), "%m/%d/%Y %I:%M %p")
+                        self.world_boss_timestamp = boss_time
+                        boss_name_ko = self._get_korean_boss_name(boss_name_en)
+                        self.after(0, lambda b=boss_name_ko, z=zone.strip(): self._update_boss_ui(b, z))
                 else:
                     self.after(0, lambda: self._update_boss_ui("정보 없음", ""))
 
