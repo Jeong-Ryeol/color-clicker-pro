@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.1.8"
+VERSION = "1.1.9"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -3809,43 +3809,56 @@ class ColorClickerApp(ctk.CTk):
                 raise Exception(f"파일이 불완전합니다 ({file_size // 1048576}MB). 인터넷 연결을 확인하세요.")
 
             # 배치 스크립트로 교체 (앱 종료 후 실행)
+            # 경로에 공백이 있을 수 있으므로 짧은 경로 사용
             batch_content = f'''@echo off
 chcp 65001 > nul
+title Wonryeol Helper Updater
 echo ========================================
 echo   Wonryeol Helper 업데이트 중...
 echo ========================================
+echo.
+echo 프로그램 종료 대기 중...
 timeout /t 3 /nobreak > nul
 
 echo 기존 파일 백업 중...
-if exist "{backup_exe}" del /f /q "{backup_exe}"
+if exist "{backup_exe}" del /f /q "{backup_exe}" 2>nul
 timeout /t 1 /nobreak > nul
 
 :move_current
-move /y "{current_exe}" "{backup_exe}"
+move /y "{current_exe}" "{backup_exe}" 2>nul
 if errorlevel 1 (
-    echo 재시도 중...
+    echo 프로그램이 아직 실행 중입니다. 재시도...
     timeout /t 2 /nobreak > nul
     goto move_current
 )
 
 echo 새 버전 적용 중...
-move /y "{new_exe}" "{current_exe}"
+copy /y "{new_exe}" "{current_exe}" > nul
 if errorlevel 1 (
     echo 업데이트 실패! 복원 중...
     move /y "{backup_exe}" "{current_exe}"
-    pause
+    echo.
+    echo 오류가 발생했습니다. 아무 키나 누르세요...
+    pause > nul
     exit /b 1
 )
 
+echo.
 echo ========================================
 echo   업데이트 완료!
-echo   5초 후 프로그램이 시작됩니다...
 echo ========================================
-timeout /t 5 /nobreak
-start "" "{current_exe}"
-timeout /t 2 /nobreak > nul
+echo.
+echo 5초 후 프로그램을 시작합니다...
+timeout /t 5
+
+echo 프로그램 시작 중...
+cd /d "{exe_dir}"
+start /b "" "{os.path.basename(current_exe)}"
+
+timeout /t 3 /nobreak > nul
 del /f /q "{backup_exe}" 2>nul
-del /f /q "%~f0"
+del /f /q "{new_exe}" 2>nul
+(goto) 2>nul & del /f /q "%~f0"
 '''
             batch_path = os.path.join(exe_dir, 'update.bat')
             with open(batch_path, 'w', encoding='utf-8') as f:
@@ -3853,8 +3866,8 @@ del /f /q "%~f0"
 
             # 배치 실행 및 앱 종료
             import subprocess
-            subprocess.Popen(['cmd', '/c', 'start', '', batch_path],
-                           creationflags=subprocess.CREATE_NO_WINDOW, shell=True)
+            os.chdir(exe_dir)
+            subprocess.Popen(f'cmd /c "{batch_path}"', shell=True)
             self.after(500, self.quit)
 
         except Exception as e:
