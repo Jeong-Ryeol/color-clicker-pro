@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -3650,38 +3650,83 @@ class ColorClickerApp(ctk.CTk):
             # 현재 실행 파일 경로
             if getattr(sys, 'frozen', False):
                 current_exe = sys.executable
-                new_exe = current_exe + '.new'
-                backup_exe = current_exe + '.backup'
+                exe_dir = os.path.dirname(current_exe)
+                new_exe = os.path.join(exe_dir, 'ColorClickerPro_new.exe')
+                backup_exe = os.path.join(exe_dir, 'ColorClickerPro_backup.exe')
             else:
-                messagebox.showinfo("알림", "소스 코드 실행 중에는 자동 업데이트가 지원되지 않습니다.\nGitHub에서 최신 버전을 다운로드하세요.")
+                self.after(0, lambda: messagebox.showinfo("알림",
+                    "소스 코드 실행 중에는 자동 업데이트가 지원되지 않습니다.\nGitHub에서 최신 버전을 다운로드하세요."))
                 return
 
             # 진행 다이얼로그 표시
             self.after(0, lambda: self.show_update_progress())
 
+            # 기존 임시 파일 정리
+            for f in [new_exe, backup_exe]:
+                if os.path.exists(f):
+                    try:
+                        os.remove(f)
+                    except:
+                        pass
+
             # 다운로드
             urllib.request.urlretrieve(download_url, new_exe)
 
+            # 다운로드 검증 (최소 1MB)
+            if os.path.getsize(new_exe) < 1000000:
+                raise Exception("다운로드된 파일이 손상되었습니다.")
+
             # 배치 스크립트로 교체 (앱 종료 후 실행)
             batch_content = f'''@echo off
+chcp 65001 > nul
+echo ========================================
+echo   Color Clicker Pro 업데이트 중...
+echo ========================================
+timeout /t 3 /nobreak > nul
+
+echo 기존 파일 백업 중...
+if exist "{backup_exe}" del /f /q "{backup_exe}"
+timeout /t 1 /nobreak > nul
+
+:move_current
+move /y "{current_exe}" "{backup_exe}"
+if errorlevel 1 (
+    echo 재시도 중...
+    timeout /t 2 /nobreak > nul
+    goto move_current
+)
+
+echo 새 버전 적용 중...
+move /y "{new_exe}" "{current_exe}"
+if errorlevel 1 (
+    echo 업데이트 실패! 복원 중...
+    move /y "{backup_exe}" "{current_exe}"
+    pause
+    exit /b 1
+)
+
+echo ========================================
+echo   업데이트 완료!
+echo ========================================
 timeout /t 2 /nobreak > nul
-if exist "{backup_exe}" del "{backup_exe}"
-move "{current_exe}" "{backup_exe}"
-move "{new_exe}" "{current_exe}"
 start "" "{current_exe}"
-del "%~f0"
+timeout /t 1 /nobreak > nul
+del /f /q "{backup_exe}" 2>nul
+del /f /q "%~f0"
 '''
-            batch_path = os.path.join(os.path.dirname(current_exe), 'update.bat')
-            with open(batch_path, 'w') as f:
+            batch_path = os.path.join(exe_dir, 'update.bat')
+            with open(batch_path, 'w', encoding='utf-8') as f:
                 f.write(batch_content)
 
             # 배치 실행 및 앱 종료
             import subprocess
-            subprocess.Popen(['cmd', '/c', batch_path], creationflags=subprocess.CREATE_NO_WINDOW)
-            self.after(0, self.quit)
+            subprocess.Popen(['cmd', '/c', 'start', '', batch_path],
+                           creationflags=subprocess.CREATE_NO_WINDOW, shell=True)
+            self.after(500, self.quit)
 
         except Exception as e:
-            self.after(0, lambda: messagebox.showerror("업데이트 실패", f"업데이트 중 오류가 발생했습니다:\n{e}"))
+            self.after(0, lambda: messagebox.showerror("업데이트 실패",
+                f"업데이트 중 오류:\n{e}\n\nGitHub에서 직접 다운로드해주세요:\nhttps://github.com/{GITHUB_REPO}/releases"))
 
     def show_update_progress(self):
         """업데이트 진행 중 표시"""
