@@ -1374,6 +1374,7 @@ class ColorClickerApp(ctk.CTk):
             self.discard_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.discard_status_label.configure(text=f"🔴 [{self.discard_trigger_key.get().upper()}] 키로 시작")
             self.discard_status_frame.configure(fg_color="#3d1a1a")
+            self.update_idletasks()  # UI 즉시 반영
             self.play_sound(True)
         else:
             self.discard_active = False
@@ -1381,9 +1382,10 @@ class ColorClickerApp(ctk.CTk):
             self.discard_status_label.configure(text="⏸️ 대기 중")
             self.discard_status_frame.configure(fg_color="#1a1a2e")
             self.discard_progress_label.configure(text="")
+            self.update_idletasks()  # UI 즉시 반영
             self.play_sound(False)
         # Home 탭 상태 즉시 업데이트
-        self.after(10, self.update_home_status_now)
+        self.update_home_status_now()
 
     def on_discard_trigger_key(self, event):
         """아이템 버리기 트리거 키 핸들러"""
@@ -1581,6 +1583,7 @@ class ColorClickerApp(ctk.CTk):
             self.sell_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.sell_status_label.configure(text=f"🔴 [{self.sell_trigger_key.get().upper()}] 키로 시작")
             self.sell_status_frame.configure(fg_color="#3d1a1a")
+            self.update_idletasks()  # UI 즉시 반영
             self.play_sound(True)
         else:
             self.sell_active = False
@@ -1588,9 +1591,10 @@ class ColorClickerApp(ctk.CTk):
             self.sell_status_label.configure(text="⏸️ 대기 중")
             self.sell_status_frame.configure(fg_color="#1a1a2e")
             self.sell_progress_label.configure(text="")
+            self.update_idletasks()  # UI 즉시 반영
             self.play_sound(False)
         # Home 탭 상태 즉시 업데이트
-        self.after(10, self.update_home_status_now)
+        self.update_home_status_now()
 
     def on_sell_trigger_key(self, event):
         """아이템 팔기 트리거 키 핸들러"""
@@ -1824,6 +1828,14 @@ class ColorClickerApp(ctk.CTk):
 
         def poll_mouse():
             import time
+            # 버튼 클릭이 해제될 때까지 대기 (0.3초)
+            time.sleep(0.3)
+            # 기존 마우스 상태 클리어
+            win32api.GetAsyncKeyState(0x01)
+            win32api.GetAsyncKeyState(0x02)
+            win32api.GetAsyncKeyState(0x05)
+            win32api.GetAsyncKeyState(0x06)
+
             while dialog_active[0]:
                 # 좌클릭
                 if win32api.GetAsyncKeyState(0x01) & 0x8000:
@@ -2226,53 +2238,108 @@ class ColorClickerApp(ctk.CTk):
             self.toggle_consume_running()
 
     def start_all_functions(self):
-        """모든 기능 시작"""
-        self._suppress_sound = True  # 개별 토글 소리 억제
+        """모든 기능 시작 (한번에 UI 업데이트)"""
+        # 상태 변경
         if not self.is_running:
-            self.toggle_running()
+            self.is_running = True
+            self.detection_active = False
+            self.start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
+            self.status_label.configure(text=f"🔴 [{self.trigger_key.get().upper()}] 키로 시작")
+            self.status_frame.configure(fg_color="#3d1a1a")
+            self.setup_hotkey()
+            self.run_detection()
+
         if not self.inv_running:
-            self.toggle_inv_running()
+            self.inv_running = True
+            self.inv_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
+            self.inv_status_label.configure(text=f"🔴 [{self.inv_trigger_key.get().upper()}] 키로 시작")
+            self.inv_status_frame.configure(fg_color="#3d1a1a")
+
         if not self.discard_running:
-            self.toggle_discard_running()
+            self.discard_running = True
+            self.discard_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
+            self.discard_status_label.configure(text=f"🔴 [{self.discard_trigger_key.get().upper()}] 키로 시작")
+            self.discard_status_frame.configure(fg_color="#3d1a1a")
+
         if not self.sell_running:
-            self.toggle_sell_running()
+            self.sell_running = True
+            self.sell_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
+            self.sell_status_label.configure(text=f"🔴 [{self.sell_trigger_key.get().upper()}] 키로 시작")
+            self.sell_status_frame.configure(fg_color="#3d1a1a")
+
         if not self.consume_running:
-            self.toggle_consume_running()
-        self._suppress_sound = False
-        self.play_sound(True)  # 한 번만 소리
+            self.consume_running = True
+            self.consume_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
+            self.consume_status_label.configure(text=f"🔴 [{self.consume_trigger_key.get().upper()}] 키로 시작")
+            self.consume_status_frame.configure(fg_color="#3d1a1a")
+
+        # UI 한번에 업데이트
+        self.update_idletasks()
+        self.update_home_status_now()
+        self.play_sound(True)
 
     def stop_all_functions(self):
-        """모든 기능 중지"""
-        self._suppress_sound = True  # 개별 토글 소리 억제
+        """모든 기능 중지 (한번에 UI 업데이트)"""
+        # 상태 변경
         if self.is_running:
-            self.toggle_running()
+            self.is_running = False
+            self.detection_active = False
+            self.start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
+            self.status_label.configure(text="⏸️ 대기 중")
+            self.status_frame.configure(fg_color="#1a1a2e")
+
         if self.inv_running:
-            self.toggle_inv_running()
+            self.inv_running = False
+            self.inv_cleanup_active = False
+            self.inv_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
+            self.inv_status_label.configure(text="⏸️ 대기 중")
+            self.inv_status_frame.configure(fg_color="#1a1a2e")
+
         if self.discard_running:
-            self.toggle_discard_running()
+            self.discard_running = False
+            self.discard_active = False
+            self.discard_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
+            self.discard_status_label.configure(text="⏸️ 대기 중")
+            self.discard_status_frame.configure(fg_color="#1a1a2e")
+
         if self.sell_running:
-            self.toggle_sell_running()
+            self.sell_running = False
+            self.sell_active = False
+            self.sell_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
+            self.sell_status_label.configure(text="⏸️ 대기 중")
+            self.sell_status_frame.configure(fg_color="#1a1a2e")
+
         if self.consume_running:
-            self.toggle_consume_running()
-        self._suppress_sound = False
-        self.play_sound(False)  # 한 번만 소리
+            self.consume_running = False
+            self.consume_active = False
+            self.consume_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
+            self.consume_status_label.configure(text="⏸️ 대기 중")
+            self.consume_status_frame.configure(fg_color="#1a1a2e")
+
+        # UI 한번에 업데이트
+        self.update_idletasks()
+        self.update_home_status_now()
+        self.play_sound(False)
 
     def play_sound(self, is_on):
-        """소리 알림 재생"""
+        """소리 알림 재생 (비동기 - UI 블로킹 방지)"""
         if not self.sound_enabled.get():
             return
         # 전체 시작/중지 중일 때는 개별 소리 억제
         if getattr(self, '_suppress_sound', False):
             return
-        try:
-            if is_on:
-                # ON: 높은 음 (띵!)
-                winsound.Beep(880, 150)  # A5, 150ms
-            else:
-                # OFF: 낮은 음 (뚝)
-                winsound.Beep(440, 100)  # A4, 100ms
-        except:
-            pass  # 소리 재생 실패 시 무시
+
+        def beep():
+            try:
+                if is_on:
+                    winsound.Beep(880, 150)  # ON: 높은 음
+                else:
+                    winsound.Beep(440, 100)  # OFF: 낮은 음
+            except:
+                pass
+
+        # 별도 스레드에서 소리 재생 (UI 블로킹 방지)
+        threading.Thread(target=beep, daemon=True).start()
 
     def export_config(self):
         """설정을 파일로 내보내기 (클랜원 공유용)"""
@@ -2755,7 +2822,7 @@ class ColorClickerApp(ctk.CTk):
         self.after(500, self.update_home_status)
 
     def update_home_status_now(self):
-        """Home 탭 상태 즉시 업데이트 (소리 없이, 반복 없이)"""
+        """Home 탭 + 오버레이 상태 즉시 업데이트"""
         states = {
             "is_running": self.is_running,
             "inv_running": self.inv_running,
@@ -2765,7 +2832,7 @@ class ColorClickerApp(ctk.CTk):
         }
 
         for attr, is_on in states.items():
-            # 상태 라벨 업데이트
+            # Home 탭 상태 라벨 업데이트
             if attr in self.home_status_labels:
                 label = self.home_status_labels[attr]
                 if is_on:
@@ -2773,13 +2840,21 @@ class ColorClickerApp(ctk.CTk):
                 else:
                     label.configure(text="OFF", text_color="#666666")
 
-            # 스위치 상태 업데이트 (UI만)
+            # Home 탭 스위치 상태 업데이트
             if attr in self.home_switches:
                 switch = self.home_switches[attr]
                 if is_on and not switch.get():
                     switch.select()
                 elif not is_on and switch.get():
                     switch.deselect()
+
+            # 오버레이 상태 업데이트
+            if hasattr(self, 'overlay_labels') and attr in self.overlay_labels:
+                label = self.overlay_labels[attr]
+                if is_on:
+                    label.configure(text="● ON", fg='#00FF00')
+                else:
+                    label.configure(text="● OFF", fg='#666666')
 
     # === 오버레이 관련 함수들 ===
     def toggle_overlay(self):
@@ -2967,6 +3042,7 @@ class ColorClickerApp(ctk.CTk):
             self.consume_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.consume_status_label.configure(text=f"🔴 [{self.consume_trigger_key.get().upper()}] 키로 시작")
             self.consume_status_frame.configure(fg_color="#3d1a1a")
+            self.update_idletasks()  # UI 즉시 반영
             self.play_sound(True)
         else:
             self.consume_active = False
@@ -2974,9 +3050,10 @@ class ColorClickerApp(ctk.CTk):
             self.consume_status_label.configure(text="⏸️ 대기 중")
             self.consume_status_frame.configure(fg_color="#1a1a2e")
             self.consume_progress_label.configure(text="")
+            self.update_idletasks()  # UI 즉시 반영
             self.play_sound(False)
         # Home 탭 상태 즉시 업데이트
-        self.after(10, self.update_home_status_now)
+        self.update_home_status_now()
 
     def on_consume_trigger_key(self, event):
         """아이템 먹기 트리거 키 핸들러"""
@@ -3117,15 +3194,17 @@ class ColorClickerApp(ctk.CTk):
             self.inv_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.inv_status_label.configure(text=f"🔴 [{self.inv_trigger_key.get().upper()}] 키로 시작")
             self.inv_status_frame.configure(fg_color="#3d1a1a")
+            self.update_idletasks()  # UI 즉시 반영
             self.play_sound(True)
         else:
             self.inv_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.inv_status_label.configure(text="⏸️ 대기 중")
             self.inv_status_frame.configure(fg_color="#1a1a2e")
             self.inv_progress_label.configure(text="")
+            self.update_idletasks()  # UI 즉시 반영
             self.play_sound(False)
         # Home 탭 상태 즉시 업데이트
-        self.after(10, self.update_home_status_now)
+        self.update_home_status_now()
 
     def select_inv_area(self):
         """인벤토리 영역 드래그 선택"""
@@ -4055,6 +4134,7 @@ class ColorClickerApp(ctk.CTk):
             self.start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.status_label.configure(text=f"🔴 [{self.trigger_key.get().upper()}] 키로 시작")
             self.status_frame.configure(fg_color="#3d1a1a")
+            self.update_idletasks()  # UI 즉시 반영
             self.detection_active = False
             self.setup_hotkey()
             self.run_detection()
@@ -4063,10 +4143,11 @@ class ColorClickerApp(ctk.CTk):
             self.start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.status_label.configure(text="⏸️ 대기 중")
             self.status_frame.configure(fg_color="#1a1a2e")
+            self.update_idletasks()  # UI 즉시 반영
             self.detection_active = False
             self.play_sound(False)
         # Home 탭 상태 즉시 업데이트
-        self.after(10, self.update_home_status_now)
+        self.update_home_status_now()
 
     def run_detection(self):
         def detection_loop():
@@ -4820,26 +4901,37 @@ del /f /q "{new_exe}" 2>nul
 
                 if nuxt_match:
                     data_str = nuxt_match.group(1)
+                    now = datetime.now(timezone.utc)
 
-                    # ISO 시간과 보스 이름 추출
-                    start_times = re.findall(r'"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)"', data_str)
-                    bosses = re.findall(r'"(Ashava|Avarice|Wandering Death|Azmodan)"', data_str)
+                    # 보스 이름과 가장 가까운 미래 시간 찾기
+                    boss_events = []
+                    boss_names = ["Ashava", "Avarice", "Wandering Death", "Azmodan"]
 
-                    if start_times and bosses:
-                        now = datetime.now(timezone.utc)
+                    # 모든 시간 추출
+                    all_times = re.findall(r'"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)"', data_str)
 
-                        # 미래의 첫 번째 보스 찾기
-                        for i, start_time_str in enumerate(start_times):
-                            if i >= len(bosses):
-                                break
-                            boss_time = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
+                    for time_str in all_times:
+                        try:
+                            boss_time = datetime.fromisoformat(time_str.replace('Z', '+00:00'))
                             if boss_time > now:
-                                self.world_boss_timestamp = boss_time
-                                boss_name_ko = self._get_korean_boss_name(bosses[i])
-                                self.after(0, lambda b=boss_name_ko: self._update_boss_ui(b, ""))
-                                break
-                        else:
-                            self.after(0, lambda: self._update_boss_ui("정보 없음", ""))
+                                # 이 시간 근처에서 보스 이름 찾기
+                                time_pos = data_str.find(time_str)
+                                # 시간 앞뒤 200자 범위에서 보스 이름 검색
+                                search_range = data_str[max(0, time_pos-200):time_pos+200]
+                                for boss in boss_names:
+                                    if boss in search_range:
+                                        boss_events.append((boss_time, boss))
+                                        break
+                        except:
+                            continue
+
+                    if boss_events:
+                        # 가장 가까운 미래 이벤트 선택
+                        boss_events.sort(key=lambda x: x[0])
+                        next_time, next_boss = boss_events[0]
+                        self.world_boss_timestamp = next_time
+                        boss_name_ko = self._get_korean_boss_name(next_boss)
+                        self.after(0, lambda b=boss_name_ko: self._update_boss_ui(b, ""))
                     else:
                         self.after(0, lambda: self._update_boss_ui("정보 없음", ""))
                 else:
