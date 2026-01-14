@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.6.4"
+VERSION = "1.6.5"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -884,81 +884,92 @@ class ColorClickerApp(ctk.CTk):
     # === 사용법 컨텐츠 ===
     def create_help_content(self, parent):
         """사용법 컨텐츠 생성"""
-        # 스크롤 가능한 프레임
-        scroll = ctk.CTkScrollableFrame(parent, fg_color="transparent")
-        scroll.pack(fill="both", expand=True, padx=5, pady=5)
+        # 전체 텍스트박스 (스크롤 내장)
+        help_text = ctk.CTkTextbox(parent, font=ctk.CTkFont(family=DEFAULT_FONT, size=12),
+                                    fg_color="#2b2b2b", wrap="word")
+        help_text.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # 제목
-        ctk.CTkLabel(scroll, text="📖 사용법 안내",
-                     font=ctk.CTkFont(family=DEFAULT_FONT, size=18, weight="bold")).pack(pady=10)
+        # 사용법 내용
+        content = """📖 사용법 안내
 
-        ctk.CTkLabel(scroll, text="💡 모든 기능은 핫키를 다시 누르면 멈춥니다!",
-                     font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold"),
-                     text_color="#00ff00").pack(pady=5)
+💡 모든 기능은 핫키를 다시 누르면 멈춥니다!
 
-        # 사용법 섹션들
-        help_sections = [
-            ("👁️ 벨리알 (아이템 줍기)",
-             "바닥에 떨어진 아이템을 자동으로 클릭해서 줍습니다.\n\n"
-             "1. [화면추출] 버튼 클릭\n"
-             "2. 게임 화면에서 아이템 이름 색상 클릭\n"
-             "3. [시작] 버튼으로 기능 켜기\n"
-             "4. 게임에서 핫키 누르면 자동 줍기 시작\n"
-             "5. 다시 핫키 누르면 멈춤\n\n"
-             "※ 제외 색상: 줍지 말아야 할 아이템 색상 등록"),
-            ("✨ 신화장난꾸러기 (인벤 정리)",
-             "인벤토리에서 신화 장난꾸러기만 즐겨찾기 등록합니다.\n\n"
-             "1. [추출] 버튼으로 보존할 색상 등록\n"
-             "2. [영역 설정]으로 인벤토리 영역 드래그\n"
-             "3. [시작] 버튼으로 기능 켜기\n"
-             "4. 게임에서 핫키 누르면 자동 즐겨찾기 시작\n"
-             "5. 다시 핫키 누르면 멈춤\n\n"
-             "※ 스페이스바로 즐겨찾기 등록됩니다"),
-            ("🗑️ 아이템 버리기",
-             "인벤토리의 아이템을 Ctrl+클릭으로 버립니다.\n\n"
-             "1. [시작] 버튼으로 기능 켜기\n"
-             "2. 게임에서 인벤토리 열기\n"
-             "3. 버릴 아이템 위에 마우스 올리기\n"
-             "4. 핫키 누르면 Ctrl+클릭 반복 시작\n"
-             "5. 다시 핫키 누르면 멈춤"),
-            ("💰 아이템 팔기",
-             "상점에서 아이템을 우클릭으로 판매합니다.\n\n"
-             "1. [시작] 버튼으로 기능 켜기\n"
-             "2. 게임에서 상점 열기\n"
-             "3. 팔 아이템 위에 마우스 올리기\n"
-             "4. 핫키 누르면 우클릭 반복 시작\n"
-             "5. 다시 핫키 누르면 멈춤"),
-            ("🍖 아이템 먹기",
-             "설정한 키를 빠르게 반복합니다.\n\n"
-             "1. [누를 키]에서 사용할 키 설정 (예: 우클릭)\n"
-             "2. [시작] 버튼으로 기능 켜기\n"
-             "3. 사용할 아이템 위에 마우스 올리기\n"
-             "4. 핫키 누르면 설정한 키 빠르게 반복\n"
-             "5. 다시 핫키 누르면 멈춤"),
-            ("🛑 긴급 정지",
-             "모든 기능을 한번에 끕니다.\n\n"
-             "• 기본 키: F12\n"
-             "• Home 탭에서 키 변경 가능\n"
-             "• 뭔가 잘못되면 바로 누르세요!"),
-        ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-        for title, content in help_sections:
-            # 섹션 박스
-            box = ctk.CTkFrame(scroll, fg_color="#363636", corner_radius=10)
-            box.pack(fill="x", pady=8, padx=5)
+👁️ 벨리알 (아이템 줍기)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+바닥에 떨어진 아이템을 자동으로 클릭해서 줍습니다.
 
-            # 헤더
-            header = ctk.CTkFrame(box, fg_color="#1a5f2a", corner_radius=8)
-            header.pack(fill="x", padx=5, pady=5)
-            ctk.CTkLabel(header, text=title,
-                         font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
-                         text_color="white").pack(side="left", padx=15, pady=8)
+1. [화면추출] 버튼 클릭
+2. 게임 화면에서 아이템 이름 색상 클릭
+3. [시작] 버튼으로 기능 켜기
+4. 게임에서 핫키 누르면 자동 줍기 시작
+5. 다시 핫키 누르면 멈춤
 
-            # 내용 (tk.Label 사용 - 높이 자동 조절)
-            content_frame = ctk.CTkFrame(box, fg_color="transparent")
-            content_frame.pack(fill="x", padx=10, pady=(0, 10))
-            tk.Label(content_frame, text=content, font=(DEFAULT_FONT, 10),
-                     fg="white", bg="#363636", justify="left", anchor="w").pack(fill="x", padx=5, pady=5)
+※ 제외 색상: 줍지 말아야 할 아이템 색상 등록
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✨ 신화장난꾸러기 (인벤 정리)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+인벤토리에서 신화 장난꾸러기만 즐겨찾기 등록합니다.
+
+1. [추출] 버튼으로 보존할 색상 등록
+2. [영역 설정]으로 인벤토리 영역 드래그
+3. [시작] 버튼으로 기능 켜기
+4. 게임에서 핫키 누르면 자동 즐겨찾기 시작
+5. 다시 핫키 누르면 멈춤
+
+※ 스페이스바로 즐겨찾기 등록됩니다
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🗑️ 아이템 버리기
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+인벤토리의 아이템을 Ctrl+클릭으로 버립니다.
+
+1. [시작] 버튼으로 기능 켜기
+2. 게임에서 인벤토리 열기
+3. 버릴 아이템 위에 마우스 올리기
+4. 핫키 누르면 Ctrl+클릭 반복 시작
+5. 다시 핫키 누르면 멈춤
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 아이템 팔기
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+상점에서 아이템을 우클릭으로 판매합니다.
+
+1. [시작] 버튼으로 기능 켜기
+2. 게임에서 상점 열기
+3. 팔 아이템 위에 마우스 올리기
+4. 핫키 누르면 우클릭 반복 시작
+5. 다시 핫키 누르면 멈춤
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🍖 아이템 먹기
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+설정한 키를 빠르게 반복합니다.
+
+1. [누를 키]에서 사용할 키 설정 (예: 우클릭)
+2. [시작] 버튼으로 기능 켜기
+3. 사용할 아이템 위에 마우스 올리기
+4. 핫키 누르면 설정한 키 빠르게 반복
+5. 다시 핫키 누르면 멈춤
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🛑 긴급 정지
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+모든 기능을 한번에 끕니다.
+
+• 기본 키: F12
+• Home 탭에서 키 변경 가능
+• 뭔가 잘못되면 바로 누르세요!
+"""
+        help_text.insert("1.0", content)
+        help_text.configure(state="disabled")  # 읽기 전용
 
     # === 패치노트 컨텐츠 ===
     def create_patch_content(self, parent):
@@ -4610,13 +4621,19 @@ class ColorClickerApp(ctk.CTk):
                 self.inv_space_delay.set(inv.get('space_delay', 0.05))
                 self.inv_click_delay.set(inv.get('click_delay', 0.01))
 
-                # UI 업데이트
-                self.inv_key_display.configure(text=self.inv_trigger_key.get().upper())
-                self.update_inv_color_preview()
-                self.inv_move_label.configure(text=f"{self.inv_move_duration.get():.2f}초")
-                self.inv_panel_label.configure(text=f"{self.inv_panel_delay.get():.3f}초")
-                self.inv_space_label.configure(text=f"{self.inv_space_delay.get():.3f}초")
-                self.inv_click_label.configure(text=f"{self.inv_click_delay.get():.3f}초")
+                # UI 업데이트 (존재하는 경우에만)
+                if hasattr(self, 'inv_key_display'):
+                    self.inv_key_display.configure(text=self.inv_trigger_key.get().upper())
+                if hasattr(self, 'update_inv_color_preview'):
+                    self.update_inv_color_preview()
+                if hasattr(self, 'inv_move_label'):
+                    self.inv_move_label.configure(text=f"{self.inv_move_duration.get():.2f}초")
+                if hasattr(self, 'inv_panel_label'):
+                    self.inv_panel_label.configure(text=f"{self.inv_panel_delay.get():.3f}초")
+                if hasattr(self, 'inv_space_label'):
+                    self.inv_space_label.configure(text=f"{self.inv_space_delay.get():.3f}초")
+                if hasattr(self, 'inv_click_label'):
+                    self.inv_click_label.configure(text=f"{self.inv_click_delay.get():.3f}초")
 
             # 아이템 버리기 탭 설정 불러오기
             discard = config.get('discard', {})
@@ -4624,8 +4641,10 @@ class ColorClickerApp(ctk.CTk):
                 self.discard_trigger_key.set(discard.get('trigger_key', 'f1'))
                 self.discard_trigger_modifier.set(discard.get('trigger_modifier', '없음'))
                 self.discard_delay.set(discard.get('delay', 0.01))
-                self.discard_key_display.configure(text=self.discard_trigger_key.get().upper())
-                self.discard_delay_label.configure(text=f"{self.discard_delay.get():.3f}초")
+                if hasattr(self, 'discard_key_display'):
+                    self.discard_key_display.configure(text=self.discard_trigger_key.get().upper())
+                if hasattr(self, 'discard_delay_label'):
+                    self.discard_delay_label.configure(text=f"{self.discard_delay.get():.3f}초")
 
             # 아이템 팔기 탭 설정 불러오기
             sell = config.get('sell', {})
@@ -4633,8 +4652,10 @@ class ColorClickerApp(ctk.CTk):
                 self.sell_trigger_key.set(sell.get('trigger_key', 'f2'))
                 self.sell_trigger_modifier.set(sell.get('trigger_modifier', '없음'))
                 self.sell_delay.set(sell.get('delay', 0.01))
-                self.sell_key_display.configure(text=self.sell_trigger_key.get().upper())
-                self.sell_delay_label.configure(text=f"{self.sell_delay.get():.3f}초")
+                if hasattr(self, 'sell_key_display'):
+                    self.sell_key_display.configure(text=self.sell_trigger_key.get().upper())
+                if hasattr(self, 'sell_delay_label'):
+                    self.sell_delay_label.configure(text=f"{self.sell_delay.get():.3f}초")
 
             # 아이템 먹기 탭 설정 불러오기
             consume = config.get('consume', {})
@@ -4645,8 +4666,10 @@ class ColorClickerApp(ctk.CTk):
                 # action_key 또는 구버전 input_type에서 로드
                 action_key = consume.get('action_key', consume.get('input_type', '우클릭'))
                 self.consume_action_key.set(action_key)
-                self.consume_key_display.configure(text=self.consume_trigger_key.get().upper())
-                self.consume_delay_label.configure(text=f"{self.consume_delay.get():.3f}초")
+                if hasattr(self, 'consume_key_display'):
+                    self.consume_key_display.configure(text=self.consume_trigger_key.get().upper())
+                if hasattr(self, 'consume_delay_label'):
+                    self.consume_delay_label.configure(text=f"{self.consume_delay.get():.3f}초")
                 # 누를 키 표시 업데이트 (둘 다)
                 display_text = action_key.upper()
                 if hasattr(self, 'consume_action_display'):
@@ -4661,8 +4684,8 @@ class ColorClickerApp(ctk.CTk):
                 self.overlay_y.set(overlay.get('y', 100))
                 self.overlay_alpha.set(overlay.get('alpha', 0.85))
                 self.overlay_bg_color.set(overlay.get('bg_color', '#1a1a2e'))
-                self.alpha_label.configure(text=f"{int(self.overlay_alpha.get() * 100)}%")
-                # 배경색 미리보기 업데이트
+                if hasattr(self, 'alpha_label'):
+                    self.alpha_label.configure(text=f"{int(self.overlay_alpha.get() * 100)}%")
                 if hasattr(self, 'bg_color_preview'):
                     self.bg_color_preview.configure(fg_color=self.overlay_bg_color.get())
 
@@ -4671,7 +4694,8 @@ class ColorClickerApp(ctk.CTk):
 
             # 긴급 정지 키 불러오기
             self.emergency_stop_key.set(config.get('emergency_stop_key', 'f12'))
-            self.emergency_key_display.configure(text=self.emergency_stop_key.get().upper())
+            if hasattr(self, 'emergency_key_display'):
+                self.emergency_key_display.configure(text=self.emergency_stop_key.get().upper())
 
             # 자동 시작 설정 불러오기
             auto_start = config.get('auto_start', {})
@@ -4682,7 +4706,8 @@ class ColorClickerApp(ctk.CTk):
                 self.auto_start_sell.set(auto_start.get('sell', False))
                 self.auto_start_consume.set(auto_start.get('consume', False))
 
-            self.key_display.configure(text=self.trigger_key.get().upper())
+            if hasattr(self, 'key_display'):
+                self.key_display.configure(text=self.trigger_key.get().upper())
             self.update_color_list()
             self.update_exclude_list()
             self.setup_hotkey()  # 핫키 재설정
