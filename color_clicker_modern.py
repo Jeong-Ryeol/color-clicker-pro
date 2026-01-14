@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.6.6"
+VERSION = "1.6.7"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -480,6 +480,9 @@ class ColorClickerApp(ctk.CTk):
         ctk.CTkButton(key_row, text="변경", width=45, height=22,
                       command=self.change_emergency_key).pack(side="right")
 
+        # Home 탭 상태 업데이트 시작
+        self.update_home_status()
+
     # === 벨리알 컨텐츠 ===
     def create_belial_content(self, parent):
         """벨리알 컨텐츠 생성"""
@@ -884,92 +887,80 @@ class ColorClickerApp(ctk.CTk):
     # === 사용법 컨텐츠 ===
     def create_help_content(self, parent):
         """사용법 컨텐츠 생성"""
-        # 전체 텍스트박스 (스크롤 내장)
-        help_text = ctk.CTkTextbox(parent, font=ctk.CTkFont(family=DEFAULT_FONT, size=12),
-                                    fg_color="#2b2b2b", wrap="word")
-        help_text.pack(fill="both", expand=True, padx=10, pady=10)
+        # 스크롤 가능한 프레임
+        scroll = ctk.CTkScrollableFrame(parent, fg_color="transparent")
+        scroll.pack(fill="both", expand=True)
 
-        # 사용법 내용
-        content = """📖 사용법 안내
+        # 제목
+        ctk.CTkLabel(scroll, text="📖 사용법 안내",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=20, weight="bold")).pack(pady=(10, 5))
 
-💡 모든 기능은 핫키를 다시 누르면 멈춥니다!
+        ctk.CTkLabel(scroll, text="💡 모든 기능은 핫키를 다시 누르면 멈춥니다!",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=13, weight="bold"),
+                     text_color="#00ff00").pack(pady=(0, 15))
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # 사용법 섹션들
+        help_sections = [
+            ("👁️ 벨리알 (아이템 줍기)",
+             "바닥에 떨어진 아이템을 자동으로 클릭해서 줍습니다.\n\n"
+             "1. [화면추출] 버튼 클릭\n"
+             "2. 게임 화면에서 아이템 이름 색상 클릭\n"
+             "3. [시작] 버튼으로 기능 켜기\n"
+             "4. 게임에서 핫키 누르면 자동 줍기 시작\n"
+             "5. 다시 핫키 누르면 멈춤\n\n"
+             "※ 제외 색상: 줍지 말아야 할 아이템 색상 등록"),
+            ("✨ 신화장난꾸러기 (인벤 정리)",
+             "인벤토리에서 신화 장난꾸러기만 즐겨찾기 등록합니다.\n\n"
+             "1. [추출] 버튼으로 보존할 색상 등록\n"
+             "2. [영역 설정]으로 인벤토리 영역 드래그\n"
+             "3. [시작] 버튼으로 기능 켜기\n"
+             "4. 게임에서 핫키 누르면 자동 즐겨찾기 시작\n"
+             "5. 다시 핫키 누르면 멈춤\n\n"
+             "※ 스페이스바로 즐겨찾기 등록됩니다"),
+            ("🗑️ 아이템 버리기",
+             "인벤토리의 아이템을 Ctrl+클릭으로 버립니다.\n\n"
+             "1. [시작] 버튼으로 기능 켜기\n"
+             "2. 게임에서 인벤토리 열기\n"
+             "3. 버릴 아이템 위에 마우스 올리기\n"
+             "4. 핫키 누르면 Ctrl+클릭 반복 시작\n"
+             "5. 다시 핫키 누르면 멈춤"),
+            ("💰 아이템 팔기",
+             "상점에서 아이템을 우클릭으로 판매합니다.\n\n"
+             "1. [시작] 버튼으로 기능 켜기\n"
+             "2. 게임에서 상점 열기\n"
+             "3. 팔 아이템 위에 마우스 올리기\n"
+             "4. 핫키 누르면 우클릭 반복 시작\n"
+             "5. 다시 핫키 누르면 멈춤"),
+            ("🍖 아이템 먹기",
+             "설정한 키를 빠르게 반복합니다.\n\n"
+             "1. [누를 키]에서 사용할 키 설정 (예: 우클릭)\n"
+             "2. [시작] 버튼으로 기능 켜기\n"
+             "3. 사용할 아이템 위에 마우스 올리기\n"
+             "4. 핫키 누르면 설정한 키 빠르게 반복\n"
+             "5. 다시 핫키 누르면 멈춤"),
+            ("🛑 긴급 정지",
+             "모든 기능을 한번에 끕니다.\n\n"
+             "• 기본 키: F12\n"
+             "• Home 탭에서 키 변경 가능\n"
+             "• 뭔가 잘못되면 바로 누르세요!"),
+        ]
 
-👁️ 벨리알 (아이템 줍기)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-바닥에 떨어진 아이템을 자동으로 클릭해서 줍습니다.
+        for title, content in help_sections:
+            # 섹션 박스
+            box = ctk.CTkFrame(scroll, fg_color="#363636", corner_radius=10)
+            box.pack(fill="x", pady=6, padx=10)
 
-1. [화면추출] 버튼 클릭
-2. 게임 화면에서 아이템 이름 색상 클릭
-3. [시작] 버튼으로 기능 켜기
-4. 게임에서 핫키 누르면 자동 줍기 시작
-5. 다시 핫키 누르면 멈춤
+            # 헤더
+            header = ctk.CTkFrame(box, fg_color="#1a5f2a", corner_radius=8)
+            header.pack(fill="x", padx=8, pady=8)
+            ctk.CTkLabel(header, text=title,
+                         font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
+                         text_color="white").pack(padx=15, pady=8)
 
-※ 제외 색상: 줍지 말아야 할 아이템 색상 등록
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✨ 신화장난꾸러기 (인벤 정리)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-인벤토리에서 신화 장난꾸러기만 즐겨찾기 등록합니다.
-
-1. [추출] 버튼으로 보존할 색상 등록
-2. [영역 설정]으로 인벤토리 영역 드래그
-3. [시작] 버튼으로 기능 켜기
-4. 게임에서 핫키 누르면 자동 즐겨찾기 시작
-5. 다시 핫키 누르면 멈춤
-
-※ 스페이스바로 즐겨찾기 등록됩니다
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🗑️ 아이템 버리기
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-인벤토리의 아이템을 Ctrl+클릭으로 버립니다.
-
-1. [시작] 버튼으로 기능 켜기
-2. 게임에서 인벤토리 열기
-3. 버릴 아이템 위에 마우스 올리기
-4. 핫키 누르면 Ctrl+클릭 반복 시작
-5. 다시 핫키 누르면 멈춤
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💰 아이템 팔기
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-상점에서 아이템을 우클릭으로 판매합니다.
-
-1. [시작] 버튼으로 기능 켜기
-2. 게임에서 상점 열기
-3. 팔 아이템 위에 마우스 올리기
-4. 핫키 누르면 우클릭 반복 시작
-5. 다시 핫키 누르면 멈춤
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🍖 아이템 먹기
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-설정한 키를 빠르게 반복합니다.
-
-1. [누를 키]에서 사용할 키 설정 (예: 우클릭)
-2. [시작] 버튼으로 기능 켜기
-3. 사용할 아이템 위에 마우스 올리기
-4. 핫키 누르면 설정한 키 빠르게 반복
-5. 다시 핫키 누르면 멈춤
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🛑 긴급 정지
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-모든 기능을 한번에 끕니다.
-
-• 기본 키: F12
-• Home 탭에서 키 변경 가능
-• 뭔가 잘못되면 바로 누르세요!
-"""
-        help_text.insert("1.0", content)
-        help_text.configure(state="disabled")  # 읽기 전용
+            # 내용
+            ctk.CTkLabel(box, text=content,
+                         font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
+                         text_color="#dddddd", justify="left", anchor="w").pack(fill="x", padx=15, pady=(0, 12))
 
     # === 패치노트 컨텐츠 ===
     def create_patch_content(self, parent):
@@ -2870,6 +2861,9 @@ class ColorClickerApp(ctk.CTk):
                 else:
                     key_label.configure(text=key)
 
+        # UI 즉시 반영
+        self.update_idletasks()
+
         # 500ms 후 다시 업데이트
         self.after(500, self.update_home_status)
 
@@ -2907,6 +2901,9 @@ class ColorClickerApp(ctk.CTk):
                     label.configure(text="● ON", fg='#00FF00')
                 else:
                     label.configure(text="● OFF", fg='#666666')
+
+        # UI 즉시 반영
+        self.update_idletasks()
 
     # === 오버레이 관련 함수들 ===
     def toggle_overlay(self):
