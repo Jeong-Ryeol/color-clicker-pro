@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.1.5"
+VERSION = "1.1.7"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -3624,20 +3624,81 @@ class ColorClickerApp(ctk.CTk):
             return False
 
     def prompt_update(self, release_data):
-        """업데이트 확인 다이얼로그"""
+        """업데이트 확인 다이얼로그 (커스텀)"""
         latest_version = release_data['tag_name'].lstrip('v')
-        release_notes = release_data.get('body', '변경 사항 없음')[:200]
+        release_title = release_data.get('name', '') or f'v{latest_version}'
+        release_body = release_data.get('body', '') or '변경 사항 없음'
 
-        result = messagebox.askyesno(
-            "업데이트 확인",
-            f"새 버전이 있습니다!\n\n"
-            f"현재 버전: v{VERSION}\n"
-            f"최신 버전: v{latest_version}\n\n"
-            f"변경 사항:\n{release_notes}...\n\n"
-            f"지금 업데이트하시겠습니까?"
-        )
+        # 커스텀 다이얼로그 생성
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("업데이트 알림")
+        dialog.geometry("450x400")
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.resizable(False, False)
 
-        if result:
+        # 중앙 배치
+        dialog.update_idletasks()
+        x = self.winfo_x() + (self.winfo_width() - 450) // 2
+        y = self.winfo_y() + (self.winfo_height() - 400) // 2
+        dialog.geometry(f"450x400+{x}+{y}")
+
+        self.update_result = False
+
+        # 헤더
+        header = ctk.CTkFrame(dialog, fg_color="#1a5f2a", corner_radius=0)
+        header.pack(fill="x", pady=(0, 10))
+        ctk.CTkLabel(header, text="새 버전이 있습니다!",
+                     font=ctk.CTkFont(size=18, weight="bold"),
+                     text_color="white").pack(pady=15)
+
+        # 버전 정보
+        version_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        version_frame.pack(fill="x", padx=20)
+        ctk.CTkLabel(version_frame,
+                     text=f"v{VERSION}  →  v{latest_version}",
+                     font=ctk.CTkFont(size=16, weight="bold"),
+                     text_color="#00aaff").pack()
+
+        # 릴리즈 제목
+        ctk.CTkLabel(dialog, text=release_title,
+                     font=ctk.CTkFont(size=14, weight="bold"),
+                     text_color="#ffaa00").pack(pady=(15, 5))
+
+        # 변경 사항 (스크롤 가능)
+        notes_frame = ctk.CTkFrame(dialog, fg_color="#2b2b2b", corner_radius=8)
+        notes_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        notes_text = ctk.CTkTextbox(notes_frame, font=ctk.CTkFont(size=12),
+                                     fg_color="#2b2b2b", wrap="word")
+        notes_text.pack(fill="both", expand=True, padx=5, pady=5)
+        notes_text.insert("1.0", release_body)
+        notes_text.configure(state="disabled")
+
+        # 버튼 프레임
+        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        btn_frame.pack(fill="x", padx=20, pady=15)
+
+        def on_update():
+            self.update_result = True
+            dialog.destroy()
+
+        def on_cancel():
+            self.update_result = False
+            dialog.destroy()
+
+        ctk.CTkButton(btn_frame, text="업데이트", width=120,
+                      fg_color="#1a5f2a", hover_color="#2a7f3a",
+                      font=ctk.CTkFont(size=14, weight="bold"),
+                      command=on_update).pack(side="left", expand=True, padx=5)
+        ctk.CTkButton(btn_frame, text="나중에", width=120,
+                      fg_color="#555555", hover_color="#666666",
+                      font=ctk.CTkFont(size=14),
+                      command=on_cancel).pack(side="right", expand=True, padx=5)
+
+        dialog.wait_window()
+
+        if self.update_result:
             # EXE 다운로드 URL 찾기
             for asset in release_data.get('assets', []):
                 if asset['name'].endswith('.exe'):
