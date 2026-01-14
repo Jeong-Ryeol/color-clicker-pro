@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.5.1"
+VERSION = "1.6.0"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -132,7 +132,6 @@ class ColorClickerApp(ctk.CTk):
         self.discard_trigger_modifier = ctk.StringVar(value="없음")
         self.discard_last_trigger_time = 0
         self.discard_delay = ctk.DoubleVar(value=0.01)  # 버리기 간격
-        self.discard_count = ctk.IntVar(value=30)  # 반복 횟수
 
         # === 아이템 팔기 탭 변수 ===
         self.sell_running = False
@@ -141,7 +140,6 @@ class ColorClickerApp(ctk.CTk):
         self.sell_trigger_modifier = ctk.StringVar(value="없음")
         self.sell_last_trigger_time = 0
         self.sell_delay = ctk.DoubleVar(value=0.01)  # 팔기 간격
-        self.sell_count = ctk.IntVar(value=30)  # 반복 횟수
 
         # === 아이템 먹기 탭 변수 ===
         self.consume_running = False
@@ -463,6 +461,23 @@ class ColorClickerApp(ctk.CTk):
         ctk.CTkLabel(alert_box, text="월드보스 5분 전\n소리 알림",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=10), text_color="#888888").pack(pady=5)
 
+        # 긴급 정지 키
+        emergency_box = self.create_section_box(row2, "긴급 정지", "🛑")
+        emergency_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        key_row = ctk.CTkFrame(emergency_box, fg_color="transparent")
+        key_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(key_row, text="키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
+        self.emergency_key_display = ctk.CTkLabel(key_row, text="F12",
+                                                   font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
+                                                   text_color="#ff4444")
+        self.emergency_key_display.pack(side="left", padx=5)
+        ctk.CTkButton(key_row, text="변경", width=50, height=25,
+                      command=self.change_emergency_key).pack(side="right")
+
+        ctk.CTkLabel(emergency_box, text="모든 기능\n즉시 중지",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=10), text_color="#888888").pack(pady=5)
+
     # === 벨리알 컨텐츠 ===
     def create_belial_content(self, parent):
         """벨리알 컨텐츠 생성"""
@@ -709,9 +724,6 @@ class ColorClickerApp(ctk.CTk):
         ctk.CTkLabel(grid_frame, text="행:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left", padx=5)
         ctk.CTkEntry(grid_frame, textvariable=self.inv_rows, width=40).pack(side="left", padx=2)
 
-        ctk.CTkButton(inv_area_box, text="그리드 테스트", height=28,
-                      command=self.test_inv_grid, fg_color="#fd7e14").pack(fill="x", pady=2)
-
         # 설명 패널 영역
         desc_area_box = self.create_section_box(row2, "설명 패널 영역", "📋")
         desc_area_box.master.pack(side="left", fill="both", expand=True, padx=2)
@@ -749,11 +761,6 @@ class ColorClickerApp(ctk.CTk):
         delay_row.pack(fill="x", pady=5)
         ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
         ctk.CTkEntry(delay_row, textvariable=self.discard_delay, width=60).pack(side="right")
-
-        count_row = ctk.CTkFrame(settings_box, fg_color="transparent")
-        count_row.pack(fill="x", pady=5)
-        ctk.CTkLabel(count_row, text="반복 횟수:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
-        ctk.CTkEntry(count_row, textvariable=self.discard_count, width=60).pack(side="right")
 
         # 컨트롤
         ctrl_box = self.create_section_box(row1, "컨트롤", "🎮")
@@ -855,11 +862,6 @@ class ColorClickerApp(ctk.CTk):
         ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
         ctk.CTkEntry(delay_row, textvariable=self.sell_delay, width=60).pack(side="right")
 
-        count_row = ctk.CTkFrame(settings_box, fg_color="transparent")
-        count_row.pack(fill="x", pady=5)
-        ctk.CTkLabel(count_row, text="반복 횟수:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
-        ctk.CTkEntry(count_row, textvariable=self.sell_count, width=60).pack(side="right")
-
         # 컨트롤
         ctrl_box = self.create_section_box(row1, "컨트롤", "🎮")
         ctrl_box.master.pack(side="left", fill="both", expand=True, padx=2)
@@ -880,20 +882,90 @@ class ColorClickerApp(ctk.CTk):
     # === 사용법 컨텐츠 ===
     def create_help_content(self, parent):
         """사용법 컨텐츠 생성"""
-        ctk.CTkLabel(parent, text="📖 사용법 안내",
-                     font=ctk.CTkFont(family=DEFAULT_FONT, size=20, weight="bold")).pack(pady=15)
+        # 스크롤 가능한 프레임
+        scroll = ctk.CTkScrollableFrame(parent, fg_color="transparent")
+        scroll.pack(fill="both", expand=True, padx=5, pady=5)
 
-        helps = [
-            ("🎯 기본 사용법", "1. 각 메뉴에서 설정\n2. Home에서 [시작] 클릭\n3. 게임에서 핫키 사용"),
-            ("👁️ 벨리알", "화면에서 특정 색상 찾아 자동 클릭\n[화면추출]로 색상 등록"),
-            ("✨ 신화장난꾸러기", "인벤토리에서 특정 색상만 즐겨찾기\n스페이스바로 등록"),
-            ("🗑️ 버리기/💰팔기/🍖먹기", "마우스 위치에서 반복 클릭\n핫키로 ON/OFF"),
-        ]
+        ctk.CTkLabel(scroll, text="📖 사용법 안내",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=18, weight="bold")).pack(pady=10)
 
-        for title, desc in helps:
-            box = self.create_section_box(parent, title, "")
-            ctk.CTkLabel(box, text=desc, font=ctk.CTkFont(family=DEFAULT_FONT, size=12),
-                        justify="left").pack(anchor="w", pady=5)
+        ctk.CTkLabel(scroll, text="💡 모든 기능은 핫키를 다시 누르면 멈춥니다!",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold"),
+                     text_color="#00ff00").pack(pady=5)
+
+        # 벨리알
+        box1 = self.create_section_box(scroll, "👁️ 벨리알 (아이템 줍기)", "")
+        ctk.CTkLabel(box1, text="""바닥에 떨어진 아이템을 자동으로 클릭해서 줍습니다.
+
+1. [화면추출] 버튼 클릭
+2. 게임 화면에서 아이템 이름 색상 클릭
+3. [시작] 버튼으로 기능 켜기
+4. 게임에서 핫키 누르면 자동 줍기 시작
+5. 다시 핫키 누르면 멈춤
+
+※ 제외 색상: 줍지 말아야 할 아이템 색상 등록""",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
+                     justify="left").pack(anchor="w", padx=10, pady=5)
+
+        # 신화장난꾸러기
+        box2 = self.create_section_box(scroll, "✨ 신화장난꾸러기 (인벤 정리)", "")
+        ctk.CTkLabel(box2, text="""인벤토리에서 신화 장난꾸러기만 즐겨찾기 등록합니다.
+
+1. [추출] 버튼으로 보존할 색상 등록
+2. [영역 설정]으로 인벤토리 영역 드래그
+3. [시작] 버튼으로 기능 켜기
+4. 게임에서 핫키 누르면 자동 즐겨찾기 시작
+5. 다시 핫키 누르면 멈춤
+
+※ 스페이스바로 즐겨찾기 등록됩니다""",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
+                     justify="left").pack(anchor="w", padx=10, pady=5)
+
+        # 버리기
+        box3 = self.create_section_box(scroll, "🗑️ 아이템 버리기", "")
+        ctk.CTkLabel(box3, text="""인벤토리의 아이템을 Ctrl+클릭으로 버립니다.
+
+1. [시작] 버튼으로 기능 켜기
+2. 게임에서 인벤토리 열기
+3. 버릴 아이템 위에 마우스 올리기
+4. 핫키 누르면 Ctrl+클릭 반복 시작
+5. 다시 핫키 누르면 멈춤""",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
+                     justify="left").pack(anchor="w", padx=10, pady=5)
+
+        # 팔기
+        box4 = self.create_section_box(scroll, "💰 아이템 팔기", "")
+        ctk.CTkLabel(box4, text="""상점에서 아이템을 우클릭으로 판매합니다.
+
+1. [시작] 버튼으로 기능 켜기
+2. 게임에서 상점 열기
+3. 팔 아이템 위에 마우스 올리기
+4. 핫키 누르면 우클릭 반복 시작
+5. 다시 핫키 누르면 멈춤""",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
+                     justify="left").pack(anchor="w", padx=10, pady=5)
+
+        # 먹기
+        box5 = self.create_section_box(scroll, "🍖 아이템 먹기", "")
+        ctk.CTkLabel(box5, text="""설정한 키를 빠르게 반복합니다.
+
+1. [누를 키]에서 사용할 키 설정 (예: 우클릭)
+2. [시작] 버튼으로 기능 켜기
+3. 사용할 아이템 위에 마우스 올리기
+4. 핫키 누르면 설정한 키 빠르게 반복
+5. 다시 핫키 누르면 멈춤""",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
+                     justify="left").pack(anchor="w", padx=10, pady=5)
+
+        # 긴급 정지
+        box6 = self.create_section_box(scroll, "🛑 긴급 정지", "")
+        ctk.CTkLabel(box6, text="""모든 기능을 한번에 끕니다.
+
+• 기본 키: F12
+• Home 탭에서 키 변경 가능
+• 뭔가 잘못되면 바로 누르세요!""",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
+                     justify="left").pack(anchor="w", padx=10, pady=5)
 
     # === 패치노트 컨텐츠 ===
     def create_patch_content(self, parent):
@@ -1272,9 +1344,6 @@ class ColorClickerApp(ctk.CTk):
                                             height=50, command=self.toggle_inv_running,
                                             fg_color="#28a745", hover_color="#218838")
         self.inv_start_btn.pack(side="left", expand=True, fill="x", padx=5)
-
-        ctk.CTkButton(btn_frame, text="🔍 그리드 테스트", font=ctk.CTkFont(family=DEFAULT_FONT, size=14), height=50,
-                      command=self.test_inv_grid, fg_color="#6c757d", hover_color="#5a6268").pack(side="left", expand=True, fill="x", padx=5)
 
     def create_discard_tab(self):
         """아이템 버리기 탭 UI 생성 - 초고속 전체 버리기"""
@@ -2558,6 +2627,7 @@ class ColorClickerApp(ctk.CTk):
 3. [시작] 버튼 → 핫키로 ON/OFF
 
 ⚠️ 제외 색상: 클릭하면 안 되는 색상 등록
+💡 핫키를 다시 누르면 동작이 멈춥니다!
 """
         ctk.CTkLabel(belial_frame, text=belial_text, justify="left",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=13)).pack(padx=15, pady=10)
@@ -2579,6 +2649,7 @@ class ColorClickerApp(ctk.CTk):
 3. [시작] 버튼 → 핫키로 실행
 
 💡 스페이스바로 즐겨찾기 등록됩니다
+💡 핫키를 다시 누르면 동작이 멈춥니다!
 """
         ctk.CTkLabel(inv_frame, text=inv_text, justify="left",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=13)).pack(padx=15, pady=10)
@@ -2862,6 +2933,9 @@ class ColorClickerApp(ctk.CTk):
         y = self.overlay_y.get()
         self.overlay_window.geometry(f'{width}x{height}+{x}+{y}')
 
+        # 클릭 통과 (click-through) 설정 - 잠시 후 적용 (창이 완전히 생성된 후)
+        self.overlay_window.after(100, self.set_overlay_click_through, True)
+
         # 배경 (커스텀 색상 적용)
         self.overlay_window.configure(bg=bg_color)
 
@@ -2923,6 +2997,33 @@ class ColorClickerApp(ctk.CTk):
         # 오버레이 상태 업데이트 시작
         self.update_overlay()
 
+    def set_overlay_click_through(self, enable=True):
+        """오버레이 클릭 통과 설정 (Windows only)"""
+        if self.overlay_window is None:
+            return
+        try:
+            import win32gui
+            import win32con
+
+            # 윈도우 핸들 가져오기
+            hwnd = int(self.overlay_window.winfo_id())
+            # 부모 윈도우 핸들 (실제 Toplevel 윈도우)
+            hwnd = win32gui.GetParent(hwnd)
+
+            # 현재 확장 스타일 가져오기
+            ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+
+            if enable:
+                # 클릭 통과 활성화: WS_EX_LAYERED | WS_EX_TRANSPARENT
+                ex_style |= win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT
+            else:
+                # 클릭 통과 비활성화
+                ex_style &= ~win32con.WS_EX_TRANSPARENT
+
+            win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, ex_style)
+        except Exception as e:
+            print(f"클릭 통과 설정 실패: {e}")
+
     def destroy_overlay(self):
         """오버레이 창 제거"""
         if self.overlay_window:
@@ -2967,6 +3068,9 @@ class ColorClickerApp(ctk.CTk):
         self.overlay_reposition_mode = True
         self.overlay_repos_btn.configure(text="Enter로 고정", fg_color="#ffc107", hover_color="#e0a800")
 
+        # 클릭 통과 해제 (드래그 가능하게)
+        self.set_overlay_click_through(False)
+
         # 드래그 이벤트 바인딩
         self.overlay_window.bind('<Button-1>', self.overlay_start_drag)
         self.overlay_window.bind('<B1-Motion>', self.overlay_do_drag)
@@ -2992,7 +3096,7 @@ class ColorClickerApp(ctk.CTk):
     def finish_overlay_reposition(self, event=None):
         """오버레이 재배치 완료"""
         self.overlay_reposition_mode = False
-        self.overlay_repos_btn.configure(text="위치 재배치", fg_color="#6c757d", hover_color="#5a6268")
+        self.overlay_repos_btn.configure(text="재배치", fg_color="#6c757d", hover_color="#5a6268")
 
         # 이벤트 바인딩 해제
         if self.overlay_window:
@@ -3004,6 +3108,9 @@ class ColorClickerApp(ctk.CTk):
             # 현재 위치 저장
             self.overlay_x.set(self.overlay_window.winfo_x())
             self.overlay_y.set(self.overlay_window.winfo_y())
+
+            # 클릭 통과 다시 활성화
+            self.set_overlay_click_through(True)
 
     def toggle_consume_running(self):
         """아이템 먹기 시작/중지"""
@@ -3306,50 +3413,6 @@ class ColorClickerApp(ctk.CTk):
         overlay.bind('<Escape>', on_escape)
         overlay.focus_set()
 
-    def test_inv_grid(self):
-        """그리드 좌표 테스트 - 각 셀 위치로 마우스 이동 + 설명 패널 영역 표시"""
-        def move_test():
-            import time
-            positions = self.get_inventory_positions()
-
-            # 인벤토리 슬롯 간격 계산
-            inv_x1 = self.inv_x1.get()
-            cols = self.inv_cols.get()
-            inv_width = self.inv_x2.get() - inv_x1
-            cell_w = inv_width / cols
-
-            # 설명 패널 기본 좌표
-            desc_x1 = self.inv_desc_x1.get()
-            desc_y1 = self.inv_desc_y1.get()
-            desc_x2 = self.inv_desc_x2.get()
-            desc_y2 = self.inv_desc_y2.get()
-            desc_width = desc_x2 - desc_x1
-            desc_height = desc_y2 - desc_y1
-
-            for i, (x, y, col) in enumerate(positions):
-                if self.inv_running:
-                    break
-
-                # 해당 슬롯의 설명 패널 X 오프셋 계산
-                x_offset = int(col * cell_w)
-                current_desc_x1 = desc_x1 + x_offset
-
-                # 설명 패널 오버레이 표시
-                self.after(0, lambda dx1=current_desc_x1, dy1=desc_y1, dw=desc_width, dh=desc_height:
-                           self.show_desc_overlay(dx1, dy1, dw, dh))
-
-                pyautogui.moveTo(x, y, duration=0.1)
-                self.after(0, lambda idx=i, dx1=current_desc_x1: self.inv_progress_label.configure(
-                    text=f"테스트: {idx+1}/{len(positions)} | 설명패널 X: {dx1}"))
-                time.sleep(0.5)
-
-                # 오버레이 제거
-                self.after(0, self.hide_desc_overlay)
-
-            self.after(0, lambda: self.inv_progress_label.configure(text="테스트 완료!"))
-
-        threading.Thread(target=move_test, daemon=True).start()
-
     def show_desc_overlay(self, x, y, width, height):
         """설명 패널 오버레이 표시"""
         self.hide_desc_overlay()  # 기존 오버레이 제거
@@ -3609,12 +3672,11 @@ class ColorClickerApp(ctk.CTk):
 
         # 돋보기 창 생성
         mag_window = tk.Toplevel(self)
-        mag_window.title("색상 추출기 - 클릭하여 선택 (ESC 취소)")
+        mag_window.title("색상 추출기 - 화면 클릭으로 선택 (ESC 취소)")
         mag_window.attributes('-topmost', True)
         mag_window.overrideredirect(False)
-        mag_window.geometry("280x320")
+        mag_window.geometry("280x280")
         mag_window.resizable(False, False)
-        mag_window.focus_force()  # 창에 포커스
 
         # 확대 영역 크기
         capture_size = 15  # 캡처할 영역 (15x15 픽셀)
@@ -3625,10 +3687,6 @@ class ColorClickerApp(ctk.CTk):
         canvas = tk.Canvas(mag_window, width=display_size, height=display_size,
                           bg='black', highlightthickness=2, highlightbackground='#00aaff')
         canvas.pack(pady=10)
-
-        # 중앙 십자선 그리기
-        center = display_size // 2
-        cross_size = magnify // 2
 
         # 색상 정보 레이블
         color_frame = tk.Frame(mag_window, bg='#2b2b2b')
@@ -3643,16 +3701,21 @@ class ColorClickerApp(ctk.CTk):
         color_label.pack(side='left', padx=10)
 
         # 안내 레이블
-        info_label = tk.Label(mag_window, text="화면 위 색상을 클릭하거나 [선택] 버튼 클릭",
-                             font=('맑은 고딕', 10), fg='#aaaaaa', bg='#2b2b2b')
+        info_label = tk.Label(mag_window, text="🖱️ 화면 아무 곳이나 클릭하여 색상 선택",
+                             font=('맑은 고딕', 10), fg='#00ff00', bg='#2b2b2b')
         info_label.pack(pady=5)
+
+        esc_label = tk.Label(mag_window, text="ESC 키로 취소",
+                            font=('맑은 고딕', 9), fg='#888888', bg='#2b2b2b')
+        esc_label.pack(pady=2)
 
         mag_window.configure(bg='#2b2b2b')
 
         current_color = [None]  # 현재 색상 저장
+        mouse_was_down = [False]  # 마우스 상태 추적
 
-        # 선택 버튼 (클릭이 안 될 경우 대비)
         def select_color():
+            """색상 선택 및 저장"""
             if current_color[0]:
                 hex_color = current_color[0]
                 if self.picker_target == "colors":
@@ -3670,24 +3733,33 @@ class ColorClickerApp(ctk.CTk):
                 self.picker_mode = False
                 mag_window.destroy()
 
-        btn_frame = tk.Frame(mag_window, bg='#2b2b2b')
-        btn_frame.pack(pady=5)
-        select_btn = tk.Button(btn_frame, text="✓ 선택", font=('맑은 고딕', 11, 'bold'),
-                               bg='#28a745', fg='white', width=10, command=select_color)
-        select_btn.pack(side='left', padx=5)
-        cancel_btn = tk.Button(btn_frame, text="✕ 취소", font=('맑은 고딕', 11),
-                               bg='#dc3545', fg='white', width=10,
-                               command=lambda: (setattr(self, 'picker_mode', False), mag_window.destroy()))
-        cancel_btn.pack(side='left', padx=5)
-
         def update_magnifier():
             if not self.picker_mode:
-                mag_window.destroy()
+                try:
+                    mag_window.destroy()
+                except:
+                    pass
                 return
 
             try:
+                import win32api
                 x, y = pyautogui.position()
                 half = capture_size // 2
+
+                # 전역 마우스 클릭 감지 (win32api)
+                # 0x01 = VK_LBUTTON (왼쪽 마우스 버튼)
+                mouse_down = win32api.GetAsyncKeyState(0x01) & 0x8000
+
+                if mouse_down:
+                    if not mouse_was_down[0]:
+                        # 클릭 시작 - 현재 위치의 색상 저장
+                        mouse_was_down[0] = True
+                else:
+                    if mouse_was_down[0]:
+                        # 클릭 해제 - 색상 선택 완료
+                        mouse_was_down[0] = False
+                        select_color()
+                        return
 
                 # 화면 캡처
                 img = ImageGrab.grab(bbox=(x - half, y - half, x + half + 1, y + half + 1))
@@ -3722,7 +3794,7 @@ class ColorClickerApp(ctk.CTk):
                 # 창 위치 업데이트 (마우스 옆에)
                 screen_w = mag_window.winfo_screenwidth()
                 screen_h = mag_window.winfo_screenheight()
-                win_w, win_h = 280, 320
+                win_w, win_h = 280, 280
 
                 # 마우스 오른쪽에 표시, 화면 밖으로 나가면 왼쪽에
                 new_x = x + 30
@@ -3741,18 +3813,17 @@ class ColorClickerApp(ctk.CTk):
 
             mag_window.after(30, update_magnifier)
 
-        def on_click(event=None):
-            select_color()  # 선택 버튼과 동일한 동작
-
         def on_escape(event=None):
             self.picker_mode = False
-            self.picker_status.configure(text="취소됨")
-            mag_window.destroy()
+            if hasattr(self, 'picker_status'):
+                self.picker_status.configure(text="취소됨")
+            try:
+                mag_window.destroy()
+            except:
+                pass
 
-        # 이벤트 바인딩
+        # ESC 키로 취소
         mag_window.bind('<Escape>', on_escape)
-        mag_window.bind('<Button-1>', on_click)
-        canvas.bind('<Button-1>', on_click)
 
         # 창 닫기 버튼
         mag_window.protocol("WM_DELETE_WINDOW", on_escape)
@@ -5032,21 +5103,23 @@ del /f /q "{new_exe}" 2>nul
         """오버레이에 배경색 적용"""
         if self.overlay_window:
             color = self.overlay_bg_color.get()
-            try:
-                self.overlay_window.configure(bg=color)
-                # 모든 자식 위젯의 배경색도 변경
-                for widget in self.overlay_window.winfo_children():
+
+            def apply_to_children(widget):
+                """재귀적으로 모든 자식 위젯에 배경색 적용"""
+                for child in widget.winfo_children():
                     try:
-                        widget.configure(bg=color)
-                        for child in widget.winfo_children():
-                            try:
-                                # separator 프레임은 제외
-                                if child.cget('bg') != '#444444':
-                                    child.configure(bg=color)
-                            except:
-                                pass
+                        # separator 프레임(구분선)은 제외
+                        current_bg = child.cget('bg')
+                        if current_bg != '#444444':
+                            child.configure(bg=color)
                     except:
                         pass
+                    # 재귀적으로 자식의 자식도 처리
+                    apply_to_children(child)
+
+            try:
+                self.overlay_window.configure(bg=color)
+                apply_to_children(self.overlay_window)
             except Exception as e:
                 print(f"배경색 적용 실패: {e}")
 
