@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.1.2"
+VERSION = "1.1.3"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -3761,61 +3761,37 @@ del /f /q "%~f0"
         try:
             url = "https://helltides.com/worldboss"
             req = urllib.request.Request(url)
-            req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-            req.add_header('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8')
+            req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
 
             with urllib.request.urlopen(req, timeout=15) as response:
                 html = response.read().decode('utf-8')
 
-                # 여러 패턴으로 시도
-                # 패턴 1: world_boss 타입의 이벤트 찾기
-                event_pattern = r'"type"\s*:\s*"world_boss"[^}]*"boss"\s*:\s*"([^"]+)"[^}]*"startTime"\s*:\s*"([^"]+)"[^}]*"zone"\s*:\s*"([^"]+)"'
-                event_match = re.search(event_pattern, html, re.DOTALL)
+                # HTML에서 첫 번째 보스 정보 추출
+                # 패턴: 시간 -> 보스이름 -> 지역
+                # 예: "1/14/2026 4:15 AM</div><div class="text-3xl mt-2 font-bold"...>Azmodan</div><div...>in Fractured Peaks</div>"
+                pattern = r'(\d{1,2}/\d{1,2}/\d{4}\s+\d{1,2}:\d{2}\s*(?:AM|PM))</div><div[^>]*class="[^"]*text-3xl[^"]*"[^>]*>(Ashava|Avarice|Wandering Death|Azmodan)</div><div[^>]*>in\s+([^<]+)</div>'
+                match = re.search(pattern, html)
 
-                # 패턴 2: 순서가 다를 수 있음
-                if not event_match:
-                    boss_match = re.search(r'"boss"\s*:\s*"(Ashava|Avarice|Wandering Death|Azmodan)"', html)
-                    time_match = re.search(r'"startTime"\s*:\s*"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z?)"', html)
-                    zone_match = re.search(r'"zone"\s*:\s*"([^"]+)"', html)
+                if match:
+                    time_str = match.group(1)  # "1/14/2026 11:30 AM"
+                    boss_name_en = match.group(2)  # "Ashava"
+                    zone = match.group(3).strip()  # "Fractured Peaks"
 
-                    if boss_match and time_match:
-                        boss_name = boss_match.group(1)
-                        start_time_str = time_match.group(1)
-                        zone_raw = zone_match.group(1) if zone_match else "unknown"
-                    else:
-                        # 패턴 3: timestamp로 시도
-                        timestamp_match = re.search(r'"timestamp"\s*:\s*(\d{10,13})[^}]*"boss"\s*:\s*"([^"]+)"', html)
-                        if timestamp_match:
-                            timestamp = int(timestamp_match.group(1))
-                            if timestamp > 9999999999:  # 밀리초
-                                timestamp = timestamp // 1000
-                            self.world_boss_timestamp = datetime.fromtimestamp(timestamp, tz=timezone.utc)
-                            boss_name = timestamp_match.group(2)
-                            zone_raw = "unknown"
-                            zone_display = self._format_zone_name(zone_raw)
-                            self.after(0, lambda b=boss_name, z=zone_display: self._update_boss_ui(b, z))
-                            self.after(300000, lambda: threading.Thread(target=self.fetch_world_boss_info, daemon=True).start())
-                            return
-                        else:
-                            self.after(0, lambda: self._update_boss_ui("정보 없음", ""))
-                            self.after(300000, lambda: threading.Thread(target=self.fetch_world_boss_info, daemon=True).start())
-                            return
+                    # 시간 파싱 (미국 시간 -> UTC -> 한국 시간)
+                    from datetime import datetime, timezone, timedelta
+
+                    # helltides.com은 사용자 로컬 시간으로 표시됨
+                    # 파싱하여 timestamp 저장
+                    boss_time = datetime.strptime(time_str, "%m/%d/%Y %I:%M %p")
+                    self.world_boss_timestamp = boss_time
+
+                    # 보스 이름 한글화
+                    boss_name_ko = self._get_korean_boss_name(boss_name_en)
+
+                    # UI 업데이트
+                    self.after(0, lambda b=boss_name_ko, z=zone: self._update_boss_ui(b, z))
                 else:
-                    boss_name = event_match.group(1)
-                    start_time_str = event_match.group(2)
-                    zone_raw = event_match.group(3)
-
-                # 시간 파싱
-                if not start_time_str.endswith('Z'):
-                    start_time_str += 'Z'
-                start_time_str = start_time_str.replace('Z', '+00:00')
-                self.world_boss_timestamp = datetime.fromisoformat(start_time_str)
-
-                # 지역명 포맷팅
-                zone_display = self._format_zone_name(zone_raw)
-
-                # UI 업데이트 (메인 스레드)
-                self.after(0, lambda b=boss_name, z=zone_display: self._update_boss_ui(b, z))
+                    self.after(0, lambda: self._update_boss_ui("정보 없음", ""))
 
         except Exception as e:
             print(f"월드 보스 정보 가져오기 실패: {e}")
@@ -3823,6 +3799,16 @@ del /f /q "%~f0"
 
         # 5분 후 다시 가져오기
         self.after(300000, lambda: threading.Thread(target=self.fetch_world_boss_info, daemon=True).start())
+
+    def _get_korean_boss_name(self, boss_name_en):
+        """보스 이름 한글화"""
+        boss_names_ko = {
+            "Ashava": "아샤바",
+            "Avarice": "아바리스",
+            "Wandering Death": "떠도는 죽음",
+            "Azmodan": "아즈모단"
+        }
+        return boss_names_ko.get(boss_name_en, boss_name_en)
 
     def _format_zone_name(self, zone_raw):
         """지역명 포맷팅 (fractured_peaks -> Fractured Peaks)"""
@@ -3847,23 +3833,29 @@ del /f /q "%~f0"
             self.home_boss_zone.configure(text=zone)
 
     def update_world_boss_timer(self):
-        """월드 보스 남은 시간 업데이트 (1분 간격)"""
+        """월드 보스 남은 시간 업데이트 (1초 간격)"""
         if self.world_boss_timestamp:
-            now = datetime.now(timezone.utc)
+            now = datetime.now()
             diff = self.world_boss_timestamp - now
 
             if diff.total_seconds() > 0:
-                hours, remainder = divmod(int(diff.total_seconds()), 3600)
-                minutes, _ = divmod(remainder, 60)
+                total_seconds = int(diff.total_seconds())
+                hours, remainder = divmod(total_seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
 
+                # 시간 문자열 생성
                 if hours > 0:
-                    time_str = f"{hours}시간 {minutes}분 후"
+                    time_str = f"{hours}시간 {minutes}분 {seconds}초 후"
+                    overlay_time = f"{hours}:{minutes:02d}:{seconds:02d}"
                 else:
-                    time_str = f"{minutes}분 후"
+                    time_str = f"{minutes}분 {seconds}초 후"
+                    overlay_time = f"{minutes}:{seconds:02d}"
 
                 # 5분 이하면 빨간색
-                if diff.total_seconds() <= 300:
+                if total_seconds <= 300:
                     time_color = "#ff4444"
+                elif total_seconds <= 600:
+                    time_color = "#ffaa00"
                 else:
                     time_color = "#00ff00"
 
@@ -3876,21 +3868,17 @@ del /f /q "%~f0"
                 # 오버레이 업데이트
                 if self.world_boss_label:
                     boss_name = self.world_boss_name.get()
-                    short_name = boss_name[:6] if len(boss_name) > 6 else boss_name
-                    if hours > 0:
-                        overlay_text = f"{short_name} {hours}:{minutes:02d}"
-                    else:
-                        overlay_text = f"{short_name} {minutes}분"
+                    overlay_text = f"{boss_name} {overlay_time}"
                     self.world_boss_label.configure(text=overlay_text, fg=time_color)
             else:
                 # 시간 지남 - 새로 가져오기
-                self.world_boss_time.set("지나감")
+                self.world_boss_time.set("스폰됨!")
                 if hasattr(self, 'home_boss_time'):
-                    self.home_boss_time.configure(text="⏰ 새로고침 필요", text_color="#ff9900")
+                    self.home_boss_time.configure(text="⏰ 스폰됨! 새로고침 중...", text_color="#ff9900")
                 threading.Thread(target=self.fetch_world_boss_info, daemon=True).start()
 
-        # 1분 후 다시 업데이트
-        self.after(60000, self.update_world_boss_timer)
+        # 1초 후 다시 업데이트
+        self.after(1000, self.update_world_boss_timer)
 
     def refresh_world_boss(self):
         """월드 보스 정보 새로고침"""
