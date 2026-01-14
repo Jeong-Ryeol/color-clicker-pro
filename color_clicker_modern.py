@@ -1371,15 +1371,19 @@ class ColorClickerApp(ctk.CTk):
         """아이템 버리기 시작/중지"""
         self.discard_running = not self.discard_running
         if self.discard_running:
-            self.discard_start_btn.configure(text="⏹️ 중지", fg_color="#6c757d", hover_color="#5a6268")
+            self.discard_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.discard_status_label.configure(text=f"🔴 [{self.discard_trigger_key.get().upper()}] 키로 시작")
             self.discard_status_frame.configure(fg_color="#3d1a1a")
+            self.play_sound(True)
         else:
             self.discard_active = False
-            self.discard_start_btn.configure(text="▶️ 시작", fg_color="#dc3545", hover_color="#c82333")
+            self.discard_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.discard_status_label.configure(text="⏸️ 대기 중")
             self.discard_status_frame.configure(fg_color="#1a1a2e")
             self.discard_progress_label.configure(text="")
+            self.play_sound(False)
+        # Home 탭 상태 즉시 업데이트
+        self.after(10, self.update_home_status_now)
 
     def on_discard_trigger_key(self, event):
         """아이템 버리기 트리거 키 핸들러"""
@@ -1574,15 +1578,19 @@ class ColorClickerApp(ctk.CTk):
         """아이템 팔기 시작/중지"""
         self.sell_running = not self.sell_running
         if self.sell_running:
-            self.sell_start_btn.configure(text="⏹️ 중지", fg_color="#6c757d", hover_color="#5a6268")
+            self.sell_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.sell_status_label.configure(text=f"🔴 [{self.sell_trigger_key.get().upper()}] 키로 시작")
-            self.sell_status_frame.configure(fg_color="#3d3d1a")
+            self.sell_status_frame.configure(fg_color="#3d1a1a")
+            self.play_sound(True)
         else:
             self.sell_active = False
             self.sell_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.sell_status_label.configure(text="⏸️ 대기 중")
             self.sell_status_frame.configure(fg_color="#1a1a2e")
             self.sell_progress_label.configure(text="")
+            self.play_sound(False)
+        # Home 탭 상태 즉시 업데이트
+        self.after(10, self.update_home_status_now)
 
     def on_sell_trigger_key(self, event):
         """아이템 팔기 트리거 키 핸들러"""
@@ -2196,10 +2204,12 @@ class ColorClickerApp(ctk.CTk):
         if self.consume_running:
             self.consume_running = False
             self.consume_active = False
-            self.consume_start_btn.configure(text="▶️ 시작", fg_color="#17a2b8", hover_color="#138496")
+            self.consume_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.consume_status_label.configure(text="⏸️ 대기 중")
             self.consume_status_frame.configure(fg_color="#1a1a2e")
 
+        # Home 탭 상태 즉시 업데이트
+        self.after(10, self.update_home_status_now)
         self.play_sound(False)
 
     def apply_auto_start(self):
@@ -2217,6 +2227,7 @@ class ColorClickerApp(ctk.CTk):
 
     def start_all_functions(self):
         """모든 기능 시작"""
+        self._suppress_sound = True  # 개별 토글 소리 억제
         if not self.is_running:
             self.toggle_running()
         if not self.inv_running:
@@ -2227,10 +2238,12 @@ class ColorClickerApp(ctk.CTk):
             self.toggle_sell_running()
         if not self.consume_running:
             self.toggle_consume_running()
-        self.play_sound(True)
+        self._suppress_sound = False
+        self.play_sound(True)  # 한 번만 소리
 
     def stop_all_functions(self):
         """모든 기능 중지"""
+        self._suppress_sound = True  # 개별 토글 소리 억제
         if self.is_running:
             self.toggle_running()
         if self.inv_running:
@@ -2241,11 +2254,15 @@ class ColorClickerApp(ctk.CTk):
             self.toggle_sell_running()
         if self.consume_running:
             self.toggle_consume_running()
-        self.play_sound(False)
+        self._suppress_sound = False
+        self.play_sound(False)  # 한 번만 소리
 
     def play_sound(self, is_on):
         """소리 알림 재생"""
         if not self.sound_enabled.get():
+            return
+        # 전체 시작/중지 중일 때는 개별 소리 억제
+        if getattr(self, '_suppress_sound', False):
             return
         try:
             if is_on:
@@ -2737,6 +2754,33 @@ class ColorClickerApp(ctk.CTk):
         # 500ms 후 다시 업데이트
         self.after(500, self.update_home_status)
 
+    def update_home_status_now(self):
+        """Home 탭 상태 즉시 업데이트 (소리 없이, 반복 없이)"""
+        states = {
+            "is_running": self.is_running,
+            "inv_running": self.inv_running,
+            "discard_running": self.discard_running,
+            "sell_running": self.sell_running,
+            "consume_running": self.consume_running
+        }
+
+        for attr, is_on in states.items():
+            # 상태 라벨 업데이트
+            if attr in self.home_status_labels:
+                label = self.home_status_labels[attr]
+                if is_on:
+                    label.configure(text="ON", text_color="#00FF00")
+                else:
+                    label.configure(text="OFF", text_color="#666666")
+
+            # 스위치 상태 업데이트 (UI만)
+            if attr in self.home_switches:
+                switch = self.home_switches[attr]
+                if is_on and not switch.get():
+                    switch.select()
+                elif not is_on and switch.get():
+                    switch.deselect()
+
     # === 오버레이 관련 함수들 ===
     def toggle_overlay(self):
         """오버레이 켜기/끄기"""
@@ -2920,15 +2964,19 @@ class ColorClickerApp(ctk.CTk):
         """아이템 먹기 시작/중지"""
         self.consume_running = not self.consume_running
         if self.consume_running:
-            self.consume_start_btn.configure(text="⏹️ 중지", fg_color="#6c757d", hover_color="#5a6268")
+            self.consume_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.consume_status_label.configure(text=f"🔴 [{self.consume_trigger_key.get().upper()}] 키로 시작")
-            self.consume_status_frame.configure(fg_color="#3d3d1a")
+            self.consume_status_frame.configure(fg_color="#3d1a1a")
+            self.play_sound(True)
         else:
             self.consume_active = False
-            self.consume_start_btn.configure(text="▶️ 시작", fg_color="#17a2b8", hover_color="#138496")
+            self.consume_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.consume_status_label.configure(text="⏸️ 대기 중")
             self.consume_status_frame.configure(fg_color="#1a1a2e")
             self.consume_progress_label.configure(text="")
+            self.play_sound(False)
+        # Home 탭 상태 즉시 업데이트
+        self.after(10, self.update_home_status_now)
 
     def on_consume_trigger_key(self, event):
         """아이템 먹기 트리거 키 핸들러"""
@@ -3069,11 +3117,15 @@ class ColorClickerApp(ctk.CTk):
             self.inv_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.inv_status_label.configure(text=f"🔴 [{self.inv_trigger_key.get().upper()}] 키로 시작")
             self.inv_status_frame.configure(fg_color="#3d1a1a")
+            self.play_sound(True)
         else:
             self.inv_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.inv_status_label.configure(text="⏸️ 대기 중")
             self.inv_status_frame.configure(fg_color="#1a1a2e")
             self.inv_progress_label.configure(text="")
+            self.play_sound(False)
+        # Home 탭 상태 즉시 업데이트
+        self.after(10, self.update_home_status_now)
 
     def select_inv_area(self):
         """인벤토리 영역 드래그 선택"""
@@ -3498,14 +3550,14 @@ class ColorClickerApp(ctk.CTk):
         dialog = ctk.CTkInputDialog(text="HEX 색상 코드 입력 (예: #FF0000):", title="색상 추가")
         hex_color = dialog.get_input()
         if hex_color and self.validate_hex(hex_color):
-            self.colors.append((hex_color.upper(), hex_color.upper()))
+            self.colors.append([hex_color.upper(), hex_color.upper()])
             self.update_color_list()
 
     def add_color_picker(self):
         color = colorchooser.askcolor(title="색상 선택")
         if color[1]:
             hex_color = color[1].upper()
-            self.colors.append((hex_color, hex_color))
+            self.colors.append([hex_color, hex_color])
             self.update_color_list()
 
     def start_screen_picker(self):
@@ -3520,12 +3572,13 @@ class ColorClickerApp(ctk.CTk):
         self.picker_target = target
 
         # 돋보기 창 생성
-        mag_window = tk.Toplevel()
+        mag_window = tk.Toplevel(self)
         mag_window.title("색상 추출기 - 클릭하여 선택 (ESC 취소)")
         mag_window.attributes('-topmost', True)
         mag_window.overrideredirect(False)
         mag_window.geometry("280x320")
         mag_window.resizable(False, False)
+        mag_window.focus_force()  # 창에 포커스
 
         # 확대 영역 크기
         capture_size = 15  # 캡처할 영역 (15x15 픽셀)
@@ -3554,13 +3607,42 @@ class ColorClickerApp(ctk.CTk):
         color_label.pack(side='left', padx=10)
 
         # 안내 레이블
-        info_label = tk.Label(mag_window, text="마우스를 이동하고 클릭하여 색상 선택",
+        info_label = tk.Label(mag_window, text="화면 위 색상을 클릭하거나 [선택] 버튼 클릭",
                              font=('맑은 고딕', 10), fg='#aaaaaa', bg='#2b2b2b')
         info_label.pack(pady=5)
 
         mag_window.configure(bg='#2b2b2b')
 
         current_color = [None]  # 현재 색상 저장
+
+        # 선택 버튼 (클릭이 안 될 경우 대비)
+        def select_color():
+            if current_color[0]:
+                hex_color = current_color[0]
+                if self.picker_target == "colors":
+                    self.colors.append([hex_color, hex_color])
+                    self.update_color_list()
+                    self.picker_status.configure(text=f"✅ 추가됨: {hex_color}")
+                elif self.picker_target == "exclude":
+                    self.exclude_colors.append([hex_color, hex_color])
+                    self.update_exclude_list()
+                    self.picker_status.configure(text=f"✅ 제외 색상 추가됨: {hex_color}")
+                elif self.picker_target == "inv_keep":
+                    self.inv_keep_color.set(hex_color)
+                    self.update_inv_color_preview()
+                    self.picker_status.configure(text=f"✅ 보존 색상: {hex_color}")
+                self.picker_mode = False
+                mag_window.destroy()
+
+        btn_frame = tk.Frame(mag_window, bg='#2b2b2b')
+        btn_frame.pack(pady=5)
+        select_btn = tk.Button(btn_frame, text="✓ 선택", font=('맑은 고딕', 11, 'bold'),
+                               bg='#28a745', fg='white', width=10, command=select_color)
+        select_btn.pack(side='left', padx=5)
+        cancel_btn = tk.Button(btn_frame, text="✕ 취소", font=('맑은 고딕', 11),
+                               bg='#dc3545', fg='white', width=10,
+                               command=lambda: (setattr(self, 'picker_mode', False), mag_window.destroy()))
+        cancel_btn.pack(side='left', padx=5)
 
         def update_magnifier():
             if not self.picker_mode:
@@ -3624,25 +3706,7 @@ class ColorClickerApp(ctk.CTk):
             mag_window.after(30, update_magnifier)
 
         def on_click(event=None):
-            if current_color[0]:
-                hex_color = current_color[0]
-                x, y = pyautogui.position()
-
-                if self.picker_target == "colors":
-                    self.colors.append((hex_color, f"{hex_color} @({x},{y})"))
-                    self.update_color_list()
-                    self.picker_status.configure(text=f"✅ 추가됨: {hex_color}")
-                elif self.picker_target == "exclude":
-                    self.exclude_colors.append((hex_color, f"{hex_color} @({x},{y})"))
-                    self.update_exclude_list()
-                    self.picker_status.configure(text=f"✅ 제외 색상 추가됨: {hex_color}")
-                elif self.picker_target == "inv_keep":
-                    self.inv_keep_color.set(hex_color)
-                    self.update_inv_color_preview()
-                    self.picker_status.configure(text=f"✅ 보존 색상: {hex_color}")
-
-                self.picker_mode = False
-                mag_window.destroy()
+            select_color()  # 선택 버튼과 동일한 동작
 
         def on_escape(event=None):
             self.picker_mode = False
@@ -3695,7 +3759,7 @@ class ColorClickerApp(ctk.CTk):
         dialog = ctk.CTkInputDialog(text="HEX 색상 코드 입력 (예: #FF0000):", title="제외 색상 추가")
         hex_color = dialog.get_input()
         if hex_color and self.validate_hex(hex_color):
-            self.exclude_colors.append((hex_color.upper(), hex_color.upper()))
+            self.exclude_colors.append([hex_color.upper(), hex_color.upper()])
             self.update_exclude_list()
 
     def start_exclude_picker(self):
@@ -3994,11 +4058,15 @@ class ColorClickerApp(ctk.CTk):
             self.detection_active = False
             self.setup_hotkey()
             self.run_detection()
+            self.play_sound(True)
         else:
             self.start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.status_label.configure(text="⏸️ 대기 중")
             self.status_frame.configure(fg_color="#1a1a2e")
             self.detection_active = False
+            self.play_sound(False)
+        # Home 탭 상태 즉시 업데이트
+        self.after(10, self.update_home_status_now)
 
     def run_detection(self):
         def detection_loop():
