@@ -264,3 +264,215 @@ class BelialMixin:
             y = int(start_y + (target_y - start_y) * t)
             win32api.SetCursorPos((x, y))
             time.sleep(duration / steps)
+
+    def on_trigger_key(self, event):
+        """트리거 키 핸들러"""
+        if not self.is_running:
+            return
+        if not self.check_modifier(self.trigger_modifier.get()):
+            return
+        self.detection_active = not self.detection_active
+        if self.detection_active:
+            self.after(0, lambda: self.status_label.configure(text="🟢 검색 활성화"))
+        else:
+            self.after(0, lambda: self.status_label.configure(text="🔴 검색 비활성화"))
+
+    def update_color_list(self):
+        """색상 리스트 업데이트"""
+        if hasattr(self, 'color_listbox'):
+            self.color_listbox.delete(0, 'end')
+            for color, _ in self.colors:
+                self.color_listbox.insert('end', color)
+
+    def update_exclude_list(self):
+        """제외 색상 리스트 업데이트"""
+        if hasattr(self, 'exclude_listbox'):
+            self.exclude_listbox.delete(0, 'end')
+            for color, _ in self.exclude_colors:
+                self.exclude_listbox.insert('end', color)
+
+    def add_color_manual(self):
+        """색상 직접 입력"""
+        import customtkinter as ctk
+        from tkinter import simpledialog
+
+        color = simpledialog.askstring("색상 입력", "HEX 색상 코드 입력 (예: #FF5500)")
+        if color and self.validate_hex(color):
+            self.colors.append([color, color])
+            self.update_color_list()
+
+    def start_screen_picker(self):
+        """화면에서 색상 추출 시작"""
+        self.start_magnifier_picker(target="colors")
+
+    def start_exclude_picker(self):
+        """제외 색상 추출 시작"""
+        self.start_magnifier_picker(target="exclude")
+
+    def start_magnifier_picker(self, target="colors"):
+        """확대경 색상 추출"""
+        self.picker_mode = True
+        self.picker_target = target
+        if hasattr(self, 'picker_status'):
+            self.picker_status.configure(text="화면 클릭으로 색상 추출 (ESC 취소)")
+
+        def on_click():
+            if self.picker_mode:
+                x, y = win32api.GetCursorPos()
+                import mss
+                with mss.mss() as sct:
+                    monitor = {"top": y, "left": x, "width": 1, "height": 1}
+                    screenshot = sct.grab(monitor)
+                    img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
+                    r, g, b = img.getpixel((0, 0))
+                    hex_color = f"#{r:02X}{g:02X}{b:02X}"
+
+                    if self.picker_target == "colors":
+                        self.colors.append([hex_color, hex_color])
+                        self.update_color_list()
+                    else:
+                        self.exclude_colors.append([hex_color, hex_color])
+                        self.update_exclude_list()
+
+                    if hasattr(self, 'picker_status'):
+                        self.picker_status.configure(text=f"추출 완료: {hex_color}")
+                    self.picker_mode = False
+
+        def wait_for_click():
+            import time as time_module
+            import win32con
+            while self.picker_mode:
+                if win32api.GetAsyncKeyState(win32con.VK_ESCAPE) & 0x8000:
+                    self.picker_mode = False
+                    self.after(0, lambda: self.picker_status.configure(text="취소됨"))
+                    break
+                if win32api.GetAsyncKeyState(win32con.VK_LBUTTON) & 0x8000:
+                    self.after(0, on_click)
+                    break
+                time_module.sleep(0.01)
+
+        threading.Thread(target=wait_for_click, daemon=True).start()
+
+    def remove_color(self):
+        """선택된 색상 삭제"""
+        if hasattr(self, 'color_listbox'):
+            selection = self.color_listbox.curselection()
+            if selection:
+                idx = selection[0]
+                del self.colors[idx]
+                self.update_color_list()
+
+    def add_exclude_manual(self):
+        """제외 색상 직접 입력"""
+        from tkinter import simpledialog
+
+        color = simpledialog.askstring("색상 입력", "HEX 색상 코드 입력 (예: #FF5500)")
+        if color and self.validate_hex(color):
+            self.exclude_colors.append([color, color])
+            self.update_exclude_list()
+
+    def remove_exclude_color(self):
+        """선택된 제외 색상 삭제"""
+        if hasattr(self, 'exclude_listbox'):
+            selection = self.exclude_listbox.curselection()
+            if selection:
+                idx = selection[0]
+                del self.exclude_colors[idx]
+                self.update_exclude_list()
+
+    def select_area(self):
+        """검색 영역 선택"""
+        import tkinter as tk
+        from tkinter import messagebox
+
+        messagebox.showinfo("영역 선택", "드래그로 영역을 선택하세요.\n좌상단에서 우하단으로 드래그")
+
+        overlay = tk.Toplevel()
+        overlay.attributes('-fullscreen', True)
+        overlay.attributes('-alpha', 0.3)
+        overlay.attributes('-topmost', True)
+        overlay.configure(bg='gray')
+
+        canvas = tk.Canvas(overlay, highlightthickness=0, bg='gray')
+        canvas.pack(fill='both', expand=True)
+
+        start_pos = [0, 0]
+        rect = [None]
+
+        def on_press(event):
+            start_pos[0] = event.x
+            start_pos[1] = event.y
+
+        def on_drag(event):
+            if rect[0]:
+                canvas.delete(rect[0])
+            rect[0] = canvas.create_rectangle(start_pos[0], start_pos[1], event.x, event.y,
+                                               outline='red', width=3)
+
+        def on_release(event):
+            x1, y1 = min(start_pos[0], event.x), min(start_pos[1], event.y)
+            x2, y2 = max(start_pos[0], event.x), max(start_pos[1], event.y)
+            self.search_x1.set(x1)
+            self.search_y1.set(y1)
+            self.search_x2.set(x2)
+            self.search_y2.set(y2)
+            if hasattr(self, 'area_label'):
+                self.area_label.configure(text=f"영역: ({x1},{y1}) ~ ({x2},{y2})")
+            overlay.destroy()
+
+        canvas.bind('<Button-1>', on_press)
+        canvas.bind('<B1-Motion>', on_drag)
+        canvas.bind('<ButtonRelease-1>', on_release)
+        canvas.bind('<Escape>', lambda e: overlay.destroy())
+
+    def show_area_overlay(self):
+        """영역 미리보기"""
+        import tkinter as tk
+
+        x1, y1 = self.search_x1.get(), self.search_y1.get()
+        x2, y2 = self.search_x2.get(), self.search_y2.get()
+
+        overlay = tk.Toplevel()
+        overlay.geometry(f"{x2-x1}x{y2-y1}+{x1}+{y1}")
+        overlay.overrideredirect(True)
+        overlay.attributes('-alpha', 0.3)
+        overlay.attributes('-topmost', True)
+        overlay.configure(bg='green')
+
+        tk.Label(overlay, text="검색 영역", bg='green', fg='white').pack(expand=True)
+
+        overlay.after(2000, overlay.destroy)
+
+    def change_trigger_key(self):
+        """트리거 키 변경"""
+        import customtkinter as ctk
+
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("핫키 설정")
+        dialog.geometry("300x150")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        ctk.CTkLabel(dialog, text="새 핫키를 누르세요...",
+                     font=ctk.CTkFont(size=14)).pack(pady=20)
+
+        dialog_active = [True]
+
+        def on_key(event):
+            if dialog_active[0]:
+                dialog_active[0] = False
+                self.trigger_key.set(event.name)
+                if hasattr(self, 'key_display'):
+                    self.key_display.configure(text=event.name.upper())
+                self.setup_hotkey()
+                dialog.destroy()
+
+        keyboard.on_press(on_key, suppress=False)
+
+        def on_close():
+            dialog_active[0] = False
+            keyboard.unhook_all()
+            self.setup_hotkey()
+            dialog.destroy()
+
+        dialog.protocol("WM_DELETE_WINDOW", on_close)

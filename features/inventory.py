@@ -144,3 +144,193 @@ class InventoryMixin:
             self.inv_cleanup_active = False
 
         threading.Thread(target=cleanup_loop, daemon=True).start()
+
+    def on_inv_trigger_key(self, event):
+        """인벤토리 정리 트리거 키 핸들러 - 토글 방식"""
+        if not self.inv_running:
+            return
+
+        if not self.check_modifier(self.inv_trigger_modifier.get()):
+            return
+
+        # 디바운스
+        current_time = time.time()
+        if current_time - self.inv_last_trigger_time < 0.3:
+            return
+        self.inv_last_trigger_time = current_time
+
+        if self.inv_cleanup_active:
+            self.inv_cleanup_active = False
+            self.after(0, lambda: self.inv_status_label.configure(text="⏹️ 중지됨"))
+        else:
+            self.inv_cleanup_active = True
+            self.run_inventory_cleanup()
+
+    def change_inv_trigger_key(self):
+        """인벤토리 핫키 변경"""
+        import customtkinter as ctk
+
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("핫키 설정")
+        dialog.geometry("300x150")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        ctk.CTkLabel(dialog, text="새 핫키를 누르세요...",
+                     font=ctk.CTkFont(size=14)).pack(pady=20)
+
+        dialog_active = [True]
+
+        def on_key(event):
+            if dialog_active[0]:
+                dialog_active[0] = False
+                self.inv_trigger_key.set(event.name)
+                if hasattr(self, 'inv_key_display'):
+                    self.inv_key_display.configure(text=event.name.upper())
+                self.setup_hotkey()
+                dialog.destroy()
+
+        keyboard.on_press(on_key, suppress=False)
+
+        def on_close():
+            dialog_active[0] = False
+            keyboard.unhook_all()
+            self.setup_hotkey()
+            dialog.destroy()
+
+        dialog.protocol("WM_DELETE_WINDOW", on_close)
+
+    def select_inv_area(self):
+        """인벤토리 영역 선택"""
+        import tkinter as tk
+        from tkinter import messagebox
+
+        messagebox.showinfo("영역 선택", "인벤토리 영역을 드래그하세요")
+
+        overlay = tk.Toplevel()
+        overlay.attributes('-fullscreen', True)
+        overlay.attributes('-alpha', 0.3)
+        overlay.attributes('-topmost', True)
+        overlay.configure(bg='gray')
+
+        canvas = tk.Canvas(overlay, highlightthickness=0, bg='gray')
+        canvas.pack(fill='both', expand=True)
+
+        start_pos = [0, 0]
+        rect = [None]
+
+        def on_press(event):
+            start_pos[0] = event.x
+            start_pos[1] = event.y
+
+        def on_drag(event):
+            if rect[0]:
+                canvas.delete(rect[0])
+            rect[0] = canvas.create_rectangle(start_pos[0], start_pos[1], event.x, event.y,
+                                               outline='red', width=3)
+
+        def on_release(event):
+            x1, y1 = min(start_pos[0], event.x), min(start_pos[1], event.y)
+            x2, y2 = max(start_pos[0], event.x), max(start_pos[1], event.y)
+            self.inv_x1.set(x1)
+            self.inv_y1.set(y1)
+            self.inv_x2.set(x2)
+            self.inv_y2.set(y2)
+            overlay.destroy()
+
+        canvas.bind('<Button-1>', on_press)
+        canvas.bind('<B1-Motion>', on_drag)
+        canvas.bind('<ButtonRelease-1>', on_release)
+        canvas.bind('<Escape>', lambda e: overlay.destroy())
+
+    def show_inv_area_overlay(self):
+        """인벤토리 영역 미리보기"""
+        import tkinter as tk
+
+        x1, y1 = self.inv_x1.get(), self.inv_y1.get()
+        x2, y2 = self.inv_x2.get(), self.inv_y2.get()
+
+        overlay = tk.Toplevel()
+        overlay.geometry(f"{x2-x1}x{y2-y1}+{x1}+{y1}")
+        overlay.overrideredirect(True)
+        overlay.attributes('-alpha', 0.3)
+        overlay.attributes('-topmost', True)
+        overlay.configure(bg='blue')
+
+        tk.Label(overlay, text="인벤토리 영역", bg='blue', fg='white').pack(expand=True)
+
+        overlay.after(2000, overlay.destroy)
+
+    def select_desc_area(self):
+        """설명 패널 영역 선택"""
+        import tkinter as tk
+        from tkinter import messagebox
+
+        messagebox.showinfo("영역 선택", "설명 패널 영역을 드래그하세요")
+
+        overlay = tk.Toplevel()
+        overlay.attributes('-fullscreen', True)
+        overlay.attributes('-alpha', 0.3)
+        overlay.attributes('-topmost', True)
+        overlay.configure(bg='gray')
+
+        canvas = tk.Canvas(overlay, highlightthickness=0, bg='gray')
+        canvas.pack(fill='both', expand=True)
+
+        start_pos = [0, 0]
+        rect = [None]
+
+        def on_press(event):
+            start_pos[0] = event.x
+            start_pos[1] = event.y
+
+        def on_drag(event):
+            if rect[0]:
+                canvas.delete(rect[0])
+            rect[0] = canvas.create_rectangle(start_pos[0], start_pos[1], event.x, event.y,
+                                               outline='yellow', width=3)
+
+        def on_release(event):
+            x1, y1 = min(start_pos[0], event.x), min(start_pos[1], event.y)
+            x2, y2 = max(start_pos[0], event.x), max(start_pos[1], event.y)
+            self.inv_desc_x1.set(x1)
+            self.inv_desc_y1.set(y1)
+            self.inv_desc_x2.set(x2)
+            self.inv_desc_y2.set(y2)
+            overlay.destroy()
+
+        canvas.bind('<Button-1>', on_press)
+        canvas.bind('<B1-Motion>', on_drag)
+        canvas.bind('<ButtonRelease-1>', on_release)
+        canvas.bind('<Escape>', lambda e: overlay.destroy())
+
+    def inv_pick_color(self):
+        """인벤토리 보존 색상 추출"""
+        if hasattr(self, 'picker_status'):
+            self.picker_status.configure(text="클릭으로 색상 추출")
+
+        def on_click():
+            x, y = win32api.GetCursorPos()
+            import mss
+            from PIL import Image
+            with mss.mss() as sct:
+                monitor = {"top": y, "left": x, "width": 1, "height": 1}
+                screenshot = sct.grab(monitor)
+                img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
+                r, g, b = img.getpixel((0, 0))
+                hex_color = f"#{r:02X}{g:02X}{b:02X}"
+                self.inv_keep_color.set(hex_color)
+                if hasattr(self, 'inv_color_preview'):
+                    self.inv_color_preview.configure(fg_color=hex_color)
+
+        def wait_for_click():
+            import win32con
+            while True:
+                if win32api.GetAsyncKeyState(win32con.VK_ESCAPE) & 0x8000:
+                    break
+                if win32api.GetAsyncKeyState(win32con.VK_LBUTTON) & 0x8000:
+                    self.after(0, on_click)
+                    break
+                time.sleep(0.01)
+
+        threading.Thread(target=wait_for_click, daemon=True).start()

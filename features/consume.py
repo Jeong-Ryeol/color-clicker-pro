@@ -60,3 +60,70 @@ class ConsumeMixin:
 
         self.consume_active = False
         self.after(0, lambda: self.consume_status_label.configure(text=f"🔴 [{self.consume_trigger_key.get().upper()}] 키로 시작"))
+
+    def on_consume_trigger_key(self, event):
+        """먹기 트리거 키 핸들러"""
+        import threading
+
+        if not self.consume_running:
+            return
+
+        if not self.check_modifier(self.consume_trigger_modifier.get()):
+            return
+
+        current_time = time.time()
+        if current_time - self.consume_last_trigger_time < 0.3:
+            return
+        self.consume_last_trigger_time = current_time
+
+        if self.consume_active:
+            self.consume_active = False
+            self.after(0, lambda: self.consume_status_label.configure(text="⏹️ 중지됨"))
+        else:
+            self.consume_active = True
+            threading.Thread(target=self.run_consume_loop, daemon=True).start()
+
+    def change_consume_trigger_key(self):
+        """먹기 핫키 변경"""
+        import customtkinter as ctk
+
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("핫키 설정")
+        dialog.geometry("300x150")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        ctk.CTkLabel(dialog, text="새 핫키를 누르세요...",
+                     font=ctk.CTkFont(size=14)).pack(pady=20)
+
+        dialog_active = [True]
+
+        def on_key(event):
+            if dialog_active[0]:
+                dialog_active[0] = False
+                self.consume_trigger_key.set(event.name)
+                if hasattr(self, 'consume_key_display'):
+                    self.consume_key_display.configure(text=event.name.upper())
+                self.setup_hotkey()
+                dialog.destroy()
+
+        keyboard.on_press(on_key, suppress=False)
+
+        def on_close():
+            dialog_active[0] = False
+            keyboard.unhook_all()
+            self.setup_hotkey()
+            dialog.destroy()
+
+        dialog.protocol("WM_DELETE_WINDOW", on_close)
+
+    def change_consume_action_key(self):
+        """먹기 액션 키 변경"""
+        import customtkinter as ctk
+        from tkinter import simpledialog
+
+        result = simpledialog.askstring("키 설정", "사용할 키 입력\n(우클릭, 왼클릭, 또는 키보드 키)")
+        if result:
+            self.consume_action_key.set(result)
+            if hasattr(self, 'consume_action_display'):
+                self.consume_action_display.configure(text=result.upper())
