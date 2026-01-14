@@ -60,16 +60,24 @@ class ColorClickerApp(ctk.CTk):
         self.geometry("950x650")
         self.resizable(False, False)
 
-        # 상태 변수
-        self.colors = []
-        self.exclude_colors = []
-        self.tolerance = ctk.IntVar(value=10)
-        self.color_tolerance = ctk.IntVar(value=10)  # 색상 허용 범위
-        self.exclude_range = ctk.IntVar(value=30)
-        self.trigger_key = ctk.StringVar(value="f1")
+        # 상태 변수 (벨리알)
+        self.colors = [
+            ["#DFB387", "#DFB387"],
+            ["#DDB186", "#DDB186"],
+            ["#D9AE83", "#D9AE83"],
+            ["#D8AD82", "#D8AD82"],
+            ["#D8AD81", "#D8AD81"],
+        ]
+        self.exclude_colors = [
+            ["#37EAD5", "#37EAD5"],
+        ]
+        self.tolerance = ctk.IntVar(value=4)
+        self.color_tolerance = ctk.IntVar(value=4)  # 색상 허용 범위
+        self.exclude_range = ctk.IntVar(value=3)
+        self.trigger_key = ctk.StringVar(value="f4")
         self.trigger_modifier = ctk.StringVar(value="없음")  # 없음, Ctrl, Shift, Alt
-        self.click_type = ctk.StringVar(value="right")
-        self.click_delay = ctk.DoubleVar(value=0.1)
+        self.click_type = ctk.StringVar(value="fkey")
+        self.click_delay = ctk.DoubleVar(value=0.01)
         self.use_full_screen = ctk.BooleanVar(value=False)  # 전체 화면 모드
         self.is_running = False
         self.detection_active = False
@@ -77,10 +85,10 @@ class ColorClickerApp(ctk.CTk):
         self.picker_target = "colors"
 
         # 검색 영역
-        self.search_x1 = ctk.IntVar(value=0)
-        self.search_y1 = ctk.IntVar(value=0)
-        self.search_x2 = ctk.IntVar(value=1920)
-        self.search_y2 = ctk.IntVar(value=1080)
+        self.search_x1 = ctk.IntVar(value=6)
+        self.search_y1 = ctk.IntVar(value=7)
+        self.search_x2 = ctk.IntVar(value=2137)
+        self.search_y2 = ctk.IntVar(value=1168)
         self.search_step = ctk.IntVar(value=5)
 
         # 쿨다운 시스템 (최근 클릭 위치)
@@ -90,13 +98,13 @@ class ColorClickerApp(ctk.CTk):
         self.cooldown_time = ctk.DoubleVar(value=0.1)  # 쿨다운 시간 (초)
 
         # === 신화장난꾸러기 탭 변수 ===
-        self.inv_keep_color = ctk.StringVar(value="#FF6B00")  # 보존할 색상 (신화 장난꾸러기)
+        self.inv_keep_color = ctk.StringVar(value="#DFA8F0")  # 보존할 색상 (신화 장난꾸러기)
         self.inv_tolerance = ctk.IntVar(value=15)
         # 전체 인벤토리 영역 (균등 분할)
-        self.inv_x1 = ctk.IntVar(value=1725)
-        self.inv_y1 = ctk.IntVar(value=1009)
-        self.inv_x2 = ctk.IntVar(value=2550)
-        self.inv_y2 = ctk.IntVar(value=1340)
+        self.inv_x1 = ctk.IntVar(value=1690)
+        self.inv_y1 = ctk.IntVar(value=961)
+        self.inv_x2 = ctk.IntVar(value=2501)
+        self.inv_y2 = ctk.IntVar(value=1287)
         # 설명 패널 영역 (첫 번째 슬롯 기준, X만 이동)
         self.inv_desc_x1 = ctk.IntVar(value=1144)
         self.inv_desc_y1 = ctk.IntVar(value=428)
@@ -107,20 +115,20 @@ class ColorClickerApp(ctk.CTk):
         self.inv_rows = ctk.IntVar(value=3)
         self.inv_running = False
         self.inv_cleanup_active = False  # 실제 정리 루프 실행 중 여부
-        self.inv_trigger_key = ctk.StringVar(value="f2")
+        self.inv_trigger_key = ctk.StringVar(value="f3")
         self.inv_trigger_modifier = ctk.StringVar(value="없음")  # 없음, Ctrl, Shift, Alt
         self.inv_last_trigger_time = 0  # 디바운스용
         # 딜레이 설정
         self.inv_delay = ctk.DoubleVar(value=0.01)  # 기본 딜레이
         self.inv_move_duration = ctk.DoubleVar(value=0.15)  # 슬롯 간 이동 시간
-        self.inv_panel_delay = ctk.DoubleVar(value=0.05)  # 설명 패널 대기
+        self.inv_panel_delay = ctk.DoubleVar(value=0.08)  # 설명 패널 대기
         self.inv_space_delay = ctk.DoubleVar(value=0.05)  # 스페이스바 간격
         self.inv_click_delay = ctk.DoubleVar(value=0.01)  # 클릭 후 대기
 
         # === 아이템 버리기 탭 변수 ===
         self.discard_running = False
         self.discard_active = False
-        self.discard_trigger_key = ctk.StringVar(value="f3")
+        self.discard_trigger_key = ctk.StringVar(value="f1")
         self.discard_trigger_modifier = ctk.StringVar(value="없음")
         self.discard_last_trigger_time = 0
         self.discard_delay = ctk.DoubleVar(value=0.01)  # 버리기 간격
@@ -129,7 +137,7 @@ class ColorClickerApp(ctk.CTk):
         # === 아이템 팔기 탭 변수 ===
         self.sell_running = False
         self.sell_active = False
-        self.sell_trigger_key = ctk.StringVar(value="f4")
+        self.sell_trigger_key = ctk.StringVar(value="f2")
         self.sell_trigger_modifier = ctk.StringVar(value="없음")
         self.sell_last_trigger_time = 0
         self.sell_delay = ctk.DoubleVar(value=0.01)  # 팔기 간격
@@ -138,11 +146,11 @@ class ColorClickerApp(ctk.CTk):
         # === 아이템 먹기 탭 변수 ===
         self.consume_running = False
         self.consume_active = False
-        self.consume_trigger_key = ctk.StringVar(value="f5")
+        self.consume_trigger_key = ctk.StringVar(value="mouse5")
         self.consume_trigger_modifier = ctk.StringVar(value="없음")
         self.consume_last_trigger_time = 0
         self.consume_delay = ctk.DoubleVar(value=0.01)  # 먹기 간격
-        self.consume_input_type = ctk.StringVar(value="F키")  # F키, 우클릭, 왼클릭
+        self.consume_input_type = ctk.StringVar(value="우클릭")  # F키, 우클릭, 왼클릭
         self.consume_action_key = ctk.StringVar(value="우클릭")  # 누를 키
 
         # === 오버레이 관련 변수 ===
@@ -179,6 +187,11 @@ class ColorClickerApp(ctk.CTk):
 
         self.setup_ui()
         self.load_config()
+        # 기본 색상이 리스트에 표시되도록
+        self.update_color_list()
+        self.update_exclude_list()
+        # 키 표시 초기화
+        self.update_key_displays()
         self.setup_hotkey()
         self.update_mouse_pos()
         # 자동 시작 적용 (약간의 딜레이 후)
@@ -411,6 +424,16 @@ class ColorClickerApp(ctk.CTk):
         ctk.CTkSlider(overlay_box, from_=0.3, to=1.0, variable=self.overlay_alpha,
                       command=self.update_overlay_alpha, height=15).pack(fill="x", pady=2)
 
+        # 배경색
+        bg_frame = ctk.CTkFrame(overlay_box, fg_color="transparent")
+        bg_frame.pack(fill="x", pady=2)
+        ctk.CTkLabel(bg_frame, text="배경색", font=ctk.CTkFont(family=DEFAULT_FONT, size=10)).pack(side="left")
+        self.bg_color_preview = ctk.CTkLabel(bg_frame, text="  ", width=25,
+                                              fg_color=self.overlay_bg_color.get())
+        self.bg_color_preview.pack(side="left", padx=5)
+        ctk.CTkButton(bg_frame, text="변경", width=40, height=20,
+                      command=self.change_overlay_bg_color).pack(side="left")
+
         # 하단 행: 설정관리 + 월드보스 + 알림
         row2 = ctk.CTkFrame(parent, fg_color="transparent")
         row2.pack(fill="x", pady=5)
@@ -552,9 +575,15 @@ class ColorClickerApp(ctk.CTk):
         key_frame = ctk.CTkFrame(parent, fg_color="transparent")
         key_frame.pack(fill="x", pady=2)
         ctk.CTkLabel(key_frame, text="핫키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
+        ctk.CTkButton(key_frame, text="변경", width=40, height=22,
+                      command=self.change_trigger_key).pack(side="right", padx=2)
+        self.key_display = ctk.CTkLabel(key_frame, text="",
+                                         font=ctk.CTkFont(family=DEFAULT_FONT, size=11, weight="bold"),
+                                         text_color="#00ff00")
+        self.key_display.pack(side="right", padx=3)
+        ctk.CTkLabel(key_frame, text="+", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="right")
         ctk.CTkComboBox(key_frame, values=["없음", "Ctrl", "Alt", "Shift"],
-                        variable=self.trigger_modifier, width=60).pack(side="right", padx=2)
-        ctk.CTkEntry(key_frame, textvariable=self.trigger_key, width=40).pack(side="right")
+                        variable=self.trigger_modifier, width=60, height=22).pack(side="right", padx=2)
 
     def create_area_section_content(self, parent):
         """검색 영역 섹션 내용"""
@@ -631,9 +660,15 @@ class ColorClickerApp(ctk.CTk):
         key_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         key_row.pack(fill="x", pady=2)
         ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
+        ctk.CTkButton(key_row, text="변경", width=40, height=22,
+                      command=self.change_inv_trigger_key).pack(side="right", padx=2)
+        self.inv_key_display = ctk.CTkLabel(key_row, text="",
+                                             font=ctk.CTkFont(family=DEFAULT_FONT, size=11, weight="bold"),
+                                             text_color="#00ff00")
+        self.inv_key_display.pack(side="right", padx=3)
+        ctk.CTkLabel(key_row, text="+", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="right")
         ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
-                        variable=self.inv_trigger_modifier, width=60).pack(side="right", padx=2)
-        ctk.CTkEntry(key_row, textvariable=self.inv_trigger_key, width=40).pack(side="right")
+                        variable=self.inv_trigger_modifier, width=60, height=22).pack(side="right", padx=2)
 
         delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         delay_row.pack(fill="x", pady=2)
@@ -667,9 +702,15 @@ class ColorClickerApp(ctk.CTk):
         key_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         key_row.pack(fill="x", pady=5)
         ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
+        ctk.CTkButton(key_row, text="변경", width=45, height=25,
+                      command=self.change_discard_trigger_key).pack(side="right", padx=2)
+        self.discard_key_display = ctk.CTkLabel(key_row, text="",
+                                                 font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold"),
+                                                 text_color="#00ff00")
+        self.discard_key_display.pack(side="right", padx=5)
+        ctk.CTkLabel(key_row, text="+", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="right")
         ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
-                        variable=self.discard_trigger_modifier, width=70).pack(side="right", padx=2)
-        ctk.CTkEntry(key_row, textvariable=self.discard_trigger_key, width=50).pack(side="right")
+                        variable=self.discard_trigger_modifier, width=65, height=25).pack(side="right", padx=2)
 
         delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         delay_row.pack(fill="x", pady=5)
@@ -711,9 +752,15 @@ class ColorClickerApp(ctk.CTk):
         key_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         key_row.pack(fill="x", pady=5)
         ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
+        ctk.CTkButton(key_row, text="변경", width=45, height=25,
+                      command=self.change_consume_trigger_key).pack(side="right", padx=2)
+        self.consume_key_display = ctk.CTkLabel(key_row, text="",
+                                                 font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold"),
+                                                 text_color="#00ff00")
+        self.consume_key_display.pack(side="right", padx=5)
+        ctk.CTkLabel(key_row, text="+", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="right")
         ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
-                        variable=self.consume_trigger_modifier, width=70).pack(side="right", padx=2)
-        ctk.CTkEntry(key_row, textvariable=self.consume_trigger_key, width=50).pack(side="right")
+                        variable=self.consume_trigger_modifier, width=65, height=25).pack(side="right", padx=2)
 
         delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         delay_row.pack(fill="x", pady=5)
@@ -723,8 +770,12 @@ class ColorClickerApp(ctk.CTk):
         action_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         action_row.pack(fill="x", pady=5)
         ctk.CTkLabel(action_row, text="누를 키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
-        ctk.CTkComboBox(action_row, values=["우클릭", "좌클릭", "Space", "E", "F", "R"],
-                        variable=self.consume_action_key, width=80).pack(side="right")
+        ctk.CTkButton(action_row, text="변경", width=45, height=25,
+                      command=self.change_consume_action_key).pack(side="right", padx=2)
+        self.consume_action_display = ctk.CTkLabel(action_row, text=self.consume_action_key.get().upper(),
+                                                    font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold"),
+                                                    text_color="#ffaa00")
+        self.consume_action_display.pack(side="right", padx=5)
 
         # 컨트롤
         ctrl_box = self.create_section_box(row1, "컨트롤", "🎮")
@@ -756,9 +807,15 @@ class ColorClickerApp(ctk.CTk):
         key_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         key_row.pack(fill="x", pady=5)
         ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
+        ctk.CTkButton(key_row, text="변경", width=45, height=25,
+                      command=self.change_sell_trigger_key).pack(side="right", padx=2)
+        self.sell_key_display = ctk.CTkLabel(key_row, text="",
+                                              font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold"),
+                                              text_color="#00ff00")
+        self.sell_key_display.pack(side="right", padx=5)
+        ctk.CTkLabel(key_row, text="+", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="right")
         ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
-                        variable=self.sell_trigger_modifier, width=70).pack(side="right", padx=2)
-        ctk.CTkEntry(key_row, textvariable=self.sell_trigger_key, width=50).pack(side="right")
+                        variable=self.sell_trigger_modifier, width=65, height=25).pack(side="right", padx=2)
 
         delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         delay_row.pack(fill="x", pady=5)
@@ -1717,6 +1774,75 @@ class ColorClickerApp(ctk.CTk):
                     self.after(0, lambda: self.consume_trigger_key.set("mouse5"))
                     self.after(0, lambda: self.consume_key_display.configure(text="MOUSE5"))
                     self.after(0, self.setup_hotkey)
+                    self.after(0, dialog.destroy)
+                    break
+                time.sleep(0.01)
+
+        threading.Thread(target=poll_mouse, daemon=True).start()
+
+        def on_close():
+            dialog_active[0] = False
+            keyboard.unhook_all()
+            self.setup_hotkey()
+            dialog.destroy()
+
+        dialog.protocol("WM_DELETE_WINDOW", on_close)
+
+    def change_consume_action_key(self):
+        """아이템 먹기 - 누를 키 변경 (마우스 클릭 포함)"""
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("누를 키 설정")
+        dialog.geometry("320x180")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        ctk.CTkLabel(dialog, text="누를 키를 입력하세요\n(키보드 또는 마우스 버튼)",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14)).pack(pady=15)
+
+        ctk.CTkLabel(dialog, text="마우스: 좌클릭, 우클릭, Mouse4, Mouse5",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#888888").pack()
+
+        dialog_active = [True]
+
+        def on_key(event):
+            if dialog_active[0]:
+                dialog_active[0] = False
+                key_name = event.name.upper()
+                self.consume_action_key.set(key_name)
+                self.consume_action_display.configure(text=key_name)
+                dialog.destroy()
+
+        keyboard.on_press(on_key, suppress=False)
+
+        def poll_mouse():
+            import time
+            while dialog_active[0]:
+                # 좌클릭
+                if win32api.GetAsyncKeyState(0x01) & 0x8000:
+                    dialog_active[0] = False
+                    self.after(0, lambda: self.consume_action_key.set("좌클릭"))
+                    self.after(0, lambda: self.consume_action_display.configure(text="좌클릭"))
+                    self.after(0, dialog.destroy)
+                    break
+                # 우클릭
+                if win32api.GetAsyncKeyState(0x02) & 0x8000:
+                    dialog_active[0] = False
+                    self.after(0, lambda: self.consume_action_key.set("우클릭"))
+                    self.after(0, lambda: self.consume_action_display.configure(text="우클릭"))
+                    self.after(0, dialog.destroy)
+                    break
+                # Mouse4
+                if win32api.GetAsyncKeyState(0x05) & 0x8000:
+                    dialog_active[0] = False
+                    self.after(0, lambda: self.consume_action_key.set("mouse4"))
+                    self.after(0, lambda: self.consume_action_display.configure(text="MOUSE4"))
+                    self.after(0, dialog.destroy)
+                    break
+                # Mouse5
+                if win32api.GetAsyncKeyState(0x06) & 0x8000:
+                    dialog_active[0] = False
+                    self.after(0, lambda: self.consume_action_key.set("mouse5"))
+                    self.after(0, lambda: self.consume_action_display.configure(text="MOUSE5"))
                     self.after(0, dialog.destroy)
                     break
                 time.sleep(0.01)
@@ -3416,7 +3542,7 @@ class ColorClickerApp(ctk.CTk):
         cross_size = magnify // 2
 
         # 색상 정보 레이블
-        color_frame = tk.Frame(mag_window, bg='#1a1a2e')
+        color_frame = tk.Frame(mag_window, bg='#2b2b2b')
         color_frame.pack(fill='x', padx=10)
 
         color_preview = tk.Label(color_frame, width=4, height=2, bg='#000000',
@@ -3424,7 +3550,7 @@ class ColorClickerApp(ctk.CTk):
         color_preview.pack(side='left', padx=5)
 
         color_label = tk.Label(color_frame, text="#000000", font=('Consolas', 16, 'bold'),
-                              fg='white', bg='#1a1a2e')
+                              fg='#00ff00', bg='#2b2b2b')
         color_label.pack(side='left', padx=10)
 
         # 안내 레이블
@@ -3538,6 +3664,27 @@ class ColorClickerApp(ctk.CTk):
         if selection:
             del self.colors[selection[0]]
             self.update_color_list()
+
+    def update_key_displays(self):
+        """모든 키 표시 업데이트"""
+        # 벨리알
+        if hasattr(self, 'key_display'):
+            self.key_display.configure(text=self.trigger_key.get().upper())
+        # 꾸러기
+        if hasattr(self, 'inv_key_display'):
+            self.inv_key_display.configure(text=self.inv_trigger_key.get().upper())
+        # 버리기
+        if hasattr(self, 'discard_key_display'):
+            self.discard_key_display.configure(text=self.discard_trigger_key.get().upper())
+        # 팔기
+        if hasattr(self, 'sell_key_display'):
+            self.sell_key_display.configure(text=self.sell_trigger_key.get().upper())
+        # 먹기
+        if hasattr(self, 'consume_key_display'):
+            self.consume_key_display.configure(text=self.consume_trigger_key.get().upper())
+        # 먹기 - 누를 키
+        if hasattr(self, 'consume_action_display'):
+            self.consume_action_display.configure(text=self.consume_action_key.get().upper())
 
     def update_color_list(self):
         self.color_listbox.delete(0, tk.END)
@@ -4228,34 +4375,34 @@ class ColorClickerApp(ctk.CTk):
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 config = json.load(f)
 
-            self.colors = config.get('colors', [])
-            self.exclude_colors = config.get('exclude_colors', [])
-            self.tolerance.set(config.get('tolerance', 10))
-            self.exclude_range.set(config.get('exclude_range', 30))
-            self.trigger_key.set(config.get('trigger_key', 'f1'))
+            self.colors = config.get('colors', self.colors)
+            self.exclude_colors = config.get('exclude_colors', self.exclude_colors)
+            self.tolerance.set(config.get('tolerance', 4))
+            self.exclude_range.set(config.get('exclude_range', 3))
+            self.trigger_key.set(config.get('trigger_key', 'f4'))
             self.trigger_modifier.set(config.get('trigger_modifier', '없음'))
-            self.click_type.set(config.get('click_type', 'right'))
-            self.click_delay.set(config.get('click_delay', 0.1))
+            self.click_type.set(config.get('click_type', 'fkey'))
+            self.click_delay.set(config.get('click_delay', 0.01))
 
             area = config.get('search_area', {})
-            self.search_x1.set(area.get('x1', 0))
-            self.search_y1.set(area.get('y1', 0))
-            self.search_x2.set(area.get('x2', 1920))
-            self.search_y2.set(area.get('y2', 1080))
+            self.search_x1.set(area.get('x1', 6))
+            self.search_y1.set(area.get('y1', 7))
+            self.search_x2.set(area.get('x2', 2137))
+            self.search_y2.set(area.get('y2', 1168))
 
             self.search_step.set(config.get('search_step', 5))
 
             # 신화장난꾸러기 탭 설정 불러오기
             inv = config.get('inventory', {})
             if inv:
-                self.inv_keep_color.set(inv.get('keep_color', '#FF6B00'))
+                self.inv_keep_color.set(inv.get('keep_color', '#DFA8F0'))
                 self.inv_tolerance.set(inv.get('tolerance', 15))
 
                 inv_area = inv.get('area', {})
-                self.inv_x1.set(inv_area.get('x1', 1725))
-                self.inv_y1.set(inv_area.get('y1', 1009))
-                self.inv_x2.set(inv_area.get('x2', 2550))
-                self.inv_y2.set(inv_area.get('y2', 1340))
+                self.inv_x1.set(inv_area.get('x1', 1690))
+                self.inv_y1.set(inv_area.get('y1', 961))
+                self.inv_x2.set(inv_area.get('x2', 2501))
+                self.inv_y2.set(inv_area.get('y2', 1287))
 
                 desc_area = inv.get('desc_area', {})
                 self.inv_desc_x1.set(desc_area.get('x1', 1144))
@@ -4265,10 +4412,10 @@ class ColorClickerApp(ctk.CTk):
 
                 self.inv_cols.set(inv.get('cols', 11))
                 self.inv_rows.set(inv.get('rows', 3))
-                self.inv_trigger_key.set(inv.get('trigger_key', 'f2'))
+                self.inv_trigger_key.set(inv.get('trigger_key', 'f3'))
                 self.inv_trigger_modifier.set(inv.get('trigger_modifier', '없음'))
                 self.inv_move_duration.set(inv.get('move_duration', 0.15))
-                self.inv_panel_delay.set(inv.get('panel_delay', 0.05))
+                self.inv_panel_delay.set(inv.get('panel_delay', 0.08))
                 self.inv_space_delay.set(inv.get('space_delay', 0.05))
                 self.inv_click_delay.set(inv.get('click_delay', 0.01))
 
@@ -4283,7 +4430,7 @@ class ColorClickerApp(ctk.CTk):
             # 아이템 버리기 탭 설정 불러오기
             discard = config.get('discard', {})
             if discard:
-                self.discard_trigger_key.set(discard.get('trigger_key', 'f3'))
+                self.discard_trigger_key.set(discard.get('trigger_key', 'f1'))
                 self.discard_trigger_modifier.set(discard.get('trigger_modifier', '없음'))
                 self.discard_delay.set(discard.get('delay', 0.01))
                 self.discard_key_display.configure(text=self.discard_trigger_key.get().upper())
@@ -4292,7 +4439,7 @@ class ColorClickerApp(ctk.CTk):
             # 아이템 팔기 탭 설정 불러오기
             sell = config.get('sell', {})
             if sell:
-                self.sell_trigger_key.set(sell.get('trigger_key', 'f4'))
+                self.sell_trigger_key.set(sell.get('trigger_key', 'f2'))
                 self.sell_trigger_modifier.set(sell.get('trigger_modifier', '없음'))
                 self.sell_delay.set(sell.get('delay', 0.01))
                 self.sell_key_display.configure(text=self.sell_trigger_key.get().upper())
@@ -4301,10 +4448,10 @@ class ColorClickerApp(ctk.CTk):
             # 아이템 먹기 탭 설정 불러오기
             consume = config.get('consume', {})
             if consume:
-                self.consume_trigger_key.set(consume.get('trigger_key', 'f5'))
+                self.consume_trigger_key.set(consume.get('trigger_key', 'mouse5'))
                 self.consume_trigger_modifier.set(consume.get('trigger_modifier', '없음'))
                 self.consume_delay.set(consume.get('delay', 0.01))
-                self.consume_input_type.set(consume.get('input_type', 'F키'))
+                self.consume_input_type.set(consume.get('input_type', '우클릭'))
                 self.consume_key_display.configure(text=self.consume_trigger_key.get().upper())
                 self.consume_delay_label.configure(text=f"{self.consume_delay.get():.3f}초")
 
