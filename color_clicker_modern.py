@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.1.7"
+VERSION = "1.1.8"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -2183,39 +2183,10 @@ class ColorClickerApp(ctk.CTk):
             pass
 
     def inv_pick_color(self):
-        """화면에서 보존할 색상 추출"""
+        """돋보기 보존 색상 추출기 시작"""
         self.picker_mode = True
         self.picker_target = "inv_keep"
-        self.picker_status.configure(text="보존할 색상을 클릭하세요 (ESC 취소)")
-
-        def on_click():
-            if self.picker_mode and self.picker_target == "inv_keep":
-                x, y = pyautogui.position()
-                try:
-                    img = ImageGrab.grab(bbox=(x, y, x+1, y+1))
-                    color = img.getpixel((0, 0))
-                    hex_color = '#{:02x}{:02x}{:02x}'.format(*color).upper()
-                    self.inv_keep_color.set(hex_color)
-                    self.update_inv_color_preview()
-                    self.picker_status.configure(text=f"✅ 보존 색상: {hex_color}")
-                except Exception as e:
-                    self.picker_status.configure(text=f"오류: {e}")
-                self.picker_mode = False
-
-        def wait_click():
-            import time
-            while self.picker_mode:
-                if keyboard.is_pressed('esc'):
-                    self.picker_mode = False
-                    self.after(0, lambda: self.picker_status.configure(text="취소됨"))
-                    break
-                if win32api.GetAsyncKeyState(win32con.VK_LBUTTON) & 0x8000:
-                    time.sleep(0.1)
-                    self.after(0, on_click)
-                    break
-                time.sleep(0.01)
-
-        threading.Thread(target=wait_click, daemon=True).start()
+        self.start_magnifier_picker("inv_keep")
 
     def change_inv_trigger_key(self):
         """인벤토리 정리 트리거 키 변경"""
@@ -2716,38 +2687,155 @@ class ColorClickerApp(ctk.CTk):
             self.update_color_list()
 
     def start_screen_picker(self):
+        """돋보기 색상 추출기 시작"""
         self.picker_mode = True
         self.picker_target = "colors"
-        self.picker_status.configure(text="화면에서 원하는 색상을 클릭하세요 (ESC 취소)")
+        self.start_magnifier_picker("colors")
 
-        def on_click():
-            if self.picker_mode and self.picker_target == "colors":
+    def start_magnifier_picker(self, target="colors"):
+        """돋보기 색상 추출 창"""
+        self.picker_mode = True
+        self.picker_target = target
+
+        # 돋보기 창 생성
+        mag_window = tk.Toplevel()
+        mag_window.title("색상 추출기 - 클릭하여 선택 (ESC 취소)")
+        mag_window.attributes('-topmost', True)
+        mag_window.overrideredirect(False)
+        mag_window.geometry("280x320")
+        mag_window.resizable(False, False)
+
+        # 확대 영역 크기
+        capture_size = 15  # 캡처할 영역 (15x15 픽셀)
+        magnify = 12       # 확대 배율
+        display_size = capture_size * magnify  # 180x180
+
+        # 캔버스 (확대 이미지)
+        canvas = tk.Canvas(mag_window, width=display_size, height=display_size,
+                          bg='black', highlightthickness=2, highlightbackground='#00aaff')
+        canvas.pack(pady=10)
+
+        # 중앙 십자선 그리기
+        center = display_size // 2
+        cross_size = magnify // 2
+
+        # 색상 정보 레이블
+        color_frame = tk.Frame(mag_window, bg='#1a1a2e')
+        color_frame.pack(fill='x', padx=10)
+
+        color_preview = tk.Label(color_frame, width=4, height=2, bg='#000000',
+                                relief='solid', borderwidth=2)
+        color_preview.pack(side='left', padx=5)
+
+        color_label = tk.Label(color_frame, text="#000000", font=('Consolas', 16, 'bold'),
+                              fg='white', bg='#1a1a2e')
+        color_label.pack(side='left', padx=10)
+
+        # 안내 레이블
+        info_label = tk.Label(mag_window, text="마우스를 이동하고 클릭하여 색상 선택",
+                             font=('맑은 고딕', 10), fg='#aaaaaa', bg='#2b2b2b')
+        info_label.pack(pady=5)
+
+        mag_window.configure(bg='#2b2b2b')
+
+        current_color = [None]  # 현재 색상 저장
+
+        def update_magnifier():
+            if not self.picker_mode:
+                mag_window.destroy()
+                return
+
+            try:
                 x, y = pyautogui.position()
-                try:
-                    img = ImageGrab.grab(bbox=(x, y, x+1, y+1))
-                    color = img.getpixel((0, 0))
-                    hex_color = '#{:02x}{:02x}{:02x}'.format(*color).upper()
+                half = capture_size // 2
+
+                # 화면 캡처
+                img = ImageGrab.grab(bbox=(x - half, y - half, x + half + 1, y + half + 1))
+
+                # 중앙 픽셀 색상
+                center_color = img.getpixel((half, half))
+                hex_color = '#{:02x}{:02x}{:02x}'.format(*center_color).upper()
+                current_color[0] = hex_color
+
+                # 이미지 확대
+                img_resized = img.resize((display_size, display_size), Image.NEAREST)
+                photo = ImageTk.PhotoImage(img_resized)
+
+                canvas.delete('all')
+                canvas.create_image(0, 0, anchor='nw', image=photo)
+                canvas.image = photo  # 참조 유지
+
+                # 중앙 십자선 및 선택 영역 표시
+                center = display_size // 2
+                # 선택될 픽셀 영역 표시 (빨간 테두리)
+                canvas.create_rectangle(center - magnify//2, center - magnify//2,
+                                        center + magnify//2, center + magnify//2,
+                                        outline='#ff0000', width=2)
+                # 십자선
+                canvas.create_line(center, 0, center, display_size, fill='#ffffff', width=1, dash=(4, 4))
+                canvas.create_line(0, center, display_size, center, fill='#ffffff', width=1, dash=(4, 4))
+
+                # 색상 정보 업데이트
+                color_preview.configure(bg=hex_color)
+                color_label.configure(text=hex_color)
+
+                # 창 위치 업데이트 (마우스 옆에)
+                screen_w = mag_window.winfo_screenwidth()
+                screen_h = mag_window.winfo_screenheight()
+                win_w, win_h = 280, 320
+
+                # 마우스 오른쪽에 표시, 화면 밖으로 나가면 왼쪽에
+                new_x = x + 30
+                new_y = y - win_h // 2
+                if new_x + win_w > screen_w:
+                    new_x = x - win_w - 30
+                if new_y < 0:
+                    new_y = 0
+                if new_y + win_h > screen_h:
+                    new_y = screen_h - win_h
+
+                mag_window.geometry(f"{win_w}x{win_h}+{new_x}+{new_y}")
+
+            except Exception as e:
+                pass
+
+            mag_window.after(30, update_magnifier)
+
+        def on_click(event=None):
+            if current_color[0]:
+                hex_color = current_color[0]
+                x, y = pyautogui.position()
+
+                if self.picker_target == "colors":
                     self.colors.append((hex_color, f"{hex_color} @({x},{y})"))
                     self.update_color_list()
                     self.picker_status.configure(text=f"✅ 추가됨: {hex_color}")
-                except Exception as e:
-                    self.picker_status.configure(text=f"오류: {e}")
+                elif self.picker_target == "exclude":
+                    self.exclude_colors.append((hex_color, f"{hex_color} @({x},{y})"))
+                    self.update_exclude_list()
+                    self.picker_status.configure(text=f"✅ 제외 색상 추가됨: {hex_color}")
+                elif self.picker_target == "inv_keep":
+                    self.inv_keep_color.set(hex_color)
+                    self.update_inv_color_preview()
+                    self.picker_status.configure(text=f"✅ 보존 색상: {hex_color}")
+
                 self.picker_mode = False
+                mag_window.destroy()
 
-        def wait_click():
-            import time
-            while self.picker_mode:
-                if keyboard.is_pressed('esc'):
-                    self.picker_mode = False
-                    self.after(0, lambda: self.picker_status.configure(text="취소됨"))
-                    break
-                if win32api.GetAsyncKeyState(win32con.VK_LBUTTON) & 0x8000:
-                    time.sleep(0.1)
-                    self.after(0, on_click)
-                    break
-                time.sleep(0.01)
+        def on_escape(event=None):
+            self.picker_mode = False
+            self.picker_status.configure(text="취소됨")
+            mag_window.destroy()
 
-        threading.Thread(target=wait_click, daemon=True).start()
+        # 이벤트 바인딩
+        mag_window.bind('<Escape>', on_escape)
+        mag_window.bind('<Button-1>', on_click)
+        canvas.bind('<Button-1>', on_click)
+
+        # 창 닫기 버튼
+        mag_window.protocol("WM_DELETE_WINDOW", on_escape)
+
+        update_magnifier()
 
     def remove_color(self):
         selection = self.color_listbox.curselection()
@@ -2768,38 +2856,10 @@ class ColorClickerApp(ctk.CTk):
             self.update_exclude_list()
 
     def start_exclude_picker(self):
+        """돋보기 제외 색상 추출기 시작"""
         self.picker_mode = True
         self.picker_target = "exclude"
-        self.picker_status.configure(text="제외할 색상을 클릭하세요 (ESC 취소)")
-
-        def on_click():
-            if self.picker_mode and self.picker_target == "exclude":
-                x, y = pyautogui.position()
-                try:
-                    img = ImageGrab.grab(bbox=(x, y, x+1, y+1))
-                    color = img.getpixel((0, 0))
-                    hex_color = '#{:02x}{:02x}{:02x}'.format(*color).upper()
-                    self.exclude_colors.append((hex_color, f"{hex_color} @({x},{y})"))
-                    self.update_exclude_list()
-                    self.picker_status.configure(text=f"✅ 제외 색상 추가됨: {hex_color}")
-                except Exception as e:
-                    self.picker_status.configure(text=f"오류: {e}")
-                self.picker_mode = False
-
-        def wait_click():
-            import time
-            while self.picker_mode:
-                if keyboard.is_pressed('esc'):
-                    self.picker_mode = False
-                    self.after(0, lambda: self.picker_status.configure(text="취소됨"))
-                    break
-                if win32api.GetAsyncKeyState(win32con.VK_LBUTTON) & 0x8000:
-                    time.sleep(0.1)
-                    self.after(0, on_click)
-                    break
-                time.sleep(0.01)
-
-        threading.Thread(target=wait_click, daemon=True).start()
+        self.start_magnifier_picker("exclude")
 
     def remove_exclude_color(self):
         selection = self.exclude_listbox.curselection()
