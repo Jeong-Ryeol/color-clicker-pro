@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.6.5"
+VERSION = "1.6.6"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -274,8 +274,8 @@ class ColorClickerApp(ctk.CTk):
         self.content_frames["home"] = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
         self.create_home_content(self.content_frames["home"])
 
-        # 사용법
-        self.content_frames["help"] = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
+        # 사용법 (일반 프레임 - 텍스트박스가 자체 스크롤)
+        self.content_frames["help"] = ctk.CTkFrame(self.content_area, fg_color="transparent")
         self.create_help_content(self.content_frames["help"])
 
         # 아이템 버리기
