@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.5.0"
+VERSION = "1.5.1"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -162,8 +162,9 @@ class ColorClickerApp(ctk.CTk):
         self.overlay_alpha = ctk.DoubleVar(value=0.85)  # 투명도 (0.0~1.0)
         self.overlay_labels = {}  # 오버레이 라벨 참조 저장
 
-        # === 소리 알림 ===
-        self.sound_enabled = ctk.BooleanVar(value=True)
+        # === 월드보스 알림 ===
+        self.boss_alert_enabled = ctk.BooleanVar(value=True)
+        self.boss_alerted_id = None  # 알림 보낸 보스의 timestamp (중복 방지)
 
         # === 긴급 정지 핫키 ===
         self.emergency_stop_key = ctk.StringVar(value="f12")
@@ -346,25 +347,6 @@ class ColorClickerApp(ctk.CTk):
         row1 = ctk.CTkFrame(parent, fg_color="transparent")
         row1.pack(fill="x", pady=5)
 
-        # 전체 제어
-        ctrl_box = self.create_section_box(row1, "전체 제어", "🎮")
-        ctrl_box.master.pack(side="left", fill="both", expand=True, padx=2)
-
-        btn_frame = ctk.CTkFrame(ctrl_box, fg_color="transparent")
-        btn_frame.pack(fill="x", pady=5)
-
-        self.all_start_btn = ctk.CTkButton(btn_frame, text="▶ 시작",
-                                            font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
-                                            height=45, command=self.start_all_functions,
-                                            fg_color="#28a745", hover_color="#218838")
-        self.all_start_btn.pack(fill="x", pady=2)
-
-        self.all_stop_btn = ctk.CTkButton(btn_frame, text="⏹ 중지",
-                                           font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
-                                           height=45, command=self.stop_all_functions,
-                                           fg_color="#dc3545", hover_color="#c82333")
-        self.all_stop_btn.pack(fill="x", pady=2)
-
         # 기능 상태
         status_box = self.create_section_box(row1, "기능 상태", "⚡")
         status_box.master.pack(side="left", fill="both", expand=True, padx=2)
@@ -374,11 +356,11 @@ class ColorClickerApp(ctk.CTk):
         self.home_status_labels = {}
 
         functions = [
-            ("벨리알", self.trigger_key, self.trigger_modifier, "is_running", self.home_toggle_belial),
-            ("꾸러기", self.inv_trigger_key, self.inv_trigger_modifier, "inv_running", self.home_toggle_inv),
             ("버리기", self.discard_trigger_key, self.discard_trigger_modifier, "discard_running", self.home_toggle_discard),
-            ("팔기", self.sell_trigger_key, self.sell_trigger_modifier, "sell_running", self.home_toggle_sell),
             ("먹기", self.consume_trigger_key, self.consume_trigger_modifier, "consume_running", self.home_toggle_consume),
+            ("팔기", self.sell_trigger_key, self.sell_trigger_modifier, "sell_running", self.home_toggle_sell),
+            ("꾸러기", self.inv_trigger_key, self.inv_trigger_modifier, "inv_running", self.home_toggle_inv),
+            ("벨리알", self.trigger_key, self.trigger_modifier, "is_running", self.home_toggle_belial),
         ]
 
         for name, key_var, mod_var, running_attr, toggle_func in functions:
@@ -473,12 +455,12 @@ class ColorClickerApp(ctk.CTk):
         alert_box = self.create_section_box(row2, "알림", "🔔")
         alert_box.master.pack(side="left", fill="both", expand=True, padx=2)
 
-        sound_row = ctk.CTkFrame(alert_box, fg_color="transparent")
-        sound_row.pack(fill="x", pady=10)
-        ctk.CTkLabel(sound_row, text="소리 알림", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
-        ctk.CTkSwitch(sound_row, text="", variable=self.sound_enabled, width=40).pack(side="right")
+        boss_alert_row = ctk.CTkFrame(alert_box, fg_color="transparent")
+        boss_alert_row.pack(fill="x", pady=10)
+        ctk.CTkLabel(boss_alert_row, text="월드보스 알림", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
+        ctk.CTkSwitch(boss_alert_row, text="", variable=self.boss_alert_enabled, width=40).pack(side="right")
 
-        ctk.CTkLabel(alert_box, text="기능 ON/OFF시\n효과음 재생",
+        ctk.CTkLabel(alert_box, text="월드보스 5분 전\n소리 알림",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=10), text_color="#888888").pack(pady=5)
 
     # === 벨리알 컨텐츠 ===
@@ -591,11 +573,21 @@ class ColorClickerApp(ctk.CTk):
         ctk.CTkCheckBox(parent, text="전체 화면", variable=self.use_full_screen,
                         command=self.toggle_area_mode).pack(anchor="w", pady=2)
 
+        # 영역 버튼 프레임
+        btn_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        btn_frame.pack(fill="x", pady=2)
+
         # 영역 설정 버튼
-        self.area_btn = ctk.CTkButton(parent, text="영역 설정", height=30,
+        self.area_btn = ctk.CTkButton(btn_frame, text="영역 설정", height=28,
                                       command=self.start_area_selection,
-                                      fg_color="#6c757d")
-        self.area_btn.pack(fill="x", pady=2)
+                                      fg_color="#6c757d", width=80)
+        self.area_btn.pack(side="left", padx=2)
+
+        # 영역 보기/끄기 버튼
+        self.area_show_btn = ctk.CTkButton(btn_frame, text="영역 보기", height=28,
+                                           command=self.show_area_overlay,
+                                           fg_color="#17a2b8", width=80)
+        self.area_show_btn.pack(side="left", padx=2)
 
         # 현재 영역 표시
         self.area_label = ctk.CTkLabel(parent, text="영역: 전체 화면",
@@ -688,6 +680,47 @@ class ColorClickerApp(ctk.CTk):
         self.inv_status_label = ctk.CTkLabel(ctrl_box, text="⏸️ 대기 중",
                                              font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
         self.inv_status_label.pack(pady=5)
+
+        self.inv_progress_label = ctk.CTkLabel(ctrl_box, text="",
+                                                font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
+                                                text_color="#00aaff")
+        self.inv_progress_label.pack(pady=2)
+
+        # === 영역 설정 (두 번째 줄) ===
+        row2 = ctk.CTkFrame(parent, fg_color="transparent")
+        row2.pack(fill="x", pady=5)
+
+        # 인벤토리 영역
+        inv_area_box = self.create_section_box(row2, "인벤토리 영역", "📦")
+        inv_area_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        inv_area_btn_frame = ctk.CTkFrame(inv_area_box, fg_color="transparent")
+        inv_area_btn_frame.pack(fill="x", pady=2)
+
+        ctk.CTkButton(inv_area_btn_frame, text="영역 설정", height=28, width=80,
+                      command=self.select_inv_area, fg_color="#6c757d").pack(side="left", padx=2)
+        ctk.CTkButton(inv_area_btn_frame, text="영역 보기", height=28, width=80,
+                      command=self.show_inv_area_overlay, fg_color="#17a2b8").pack(side="left", padx=2)
+
+        grid_frame = ctk.CTkFrame(inv_area_box, fg_color="transparent")
+        grid_frame.pack(fill="x", pady=2)
+        ctk.CTkLabel(grid_frame, text="열:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
+        ctk.CTkEntry(grid_frame, textvariable=self.inv_cols, width=40).pack(side="left", padx=2)
+        ctk.CTkLabel(grid_frame, text="행:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left", padx=5)
+        ctk.CTkEntry(grid_frame, textvariable=self.inv_rows, width=40).pack(side="left", padx=2)
+
+        ctk.CTkButton(inv_area_box, text="그리드 테스트", height=28,
+                      command=self.test_inv_grid, fg_color="#fd7e14").pack(fill="x", pady=2)
+
+        # 설명 패널 영역
+        desc_area_box = self.create_section_box(row2, "설명 패널 영역", "📋")
+        desc_area_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        ctk.CTkButton(desc_area_box, text="영역 설정", height=28,
+                      command=self.select_desc_area, fg_color="#6c757d").pack(fill="x", pady=2)
+
+        ctk.CTkLabel(desc_area_box, text="💡 아이템 설명이 나오는 영역",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=10), text_color="#888888").pack(pady=5)
 
     # === 아이템 버리기 컨텐츠 ===
     def create_discard_content(self, parent):
@@ -1373,17 +1406,13 @@ class ColorClickerApp(ctk.CTk):
         if self.discard_running:
             self.discard_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.discard_status_label.configure(text=f"🔴 [{self.discard_trigger_key.get().upper()}] 키로 시작")
-            self.discard_status_frame.configure(fg_color="#3d1a1a")
             self.update_idletasks()  # UI 즉시 반영
-            self.play_sound(True)
         else:
             self.discard_active = False
             self.discard_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.discard_status_label.configure(text="⏸️ 대기 중")
-            self.discard_status_frame.configure(fg_color="#1a1a2e")
             self.discard_progress_label.configure(text="")
             self.update_idletasks()  # UI 즉시 반영
-            self.play_sound(False)
         # Home 탭 상태 즉시 업데이트
         self.update_home_status_now()
 
@@ -1407,7 +1436,6 @@ class ColorClickerApp(ctk.CTk):
         if self.discard_active:
             self.discard_active = False
             self.after(0, lambda: self.discard_status_label.configure(text="⏹️ 중지됨"))
-            self.after(0, lambda: self.discard_status_frame.configure(fg_color="#3d3d1a"))
         else:
             self.discard_active = True
             self.run_fast_discard()
@@ -1421,7 +1449,6 @@ class ColorClickerApp(ctk.CTk):
             delay = self.discard_delay.get()
 
             self.after(0, lambda: self.discard_status_label.configure(text="🗑️ 버리는 중..."))
-            self.after(0, lambda: self.discard_status_frame.configure(fg_color="#3d1a1a"))
 
             discarded = 0
             for i, (x, y, col) in enumerate(positions):
@@ -1446,7 +1473,6 @@ class ColorClickerApp(ctk.CTk):
 
             self.discard_active = False
             self.after(0, lambda: self.discard_status_label.configure(text="✅ 완료!"))
-            self.after(0, lambda: self.discard_status_frame.configure(fg_color="#1a1a2e"))
             self.after(0, lambda d=discarded: self.discard_progress_label.configure(
                 text=f"총 {d}개 버림"))
 
@@ -1582,17 +1608,13 @@ class ColorClickerApp(ctk.CTk):
         if self.sell_running:
             self.sell_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.sell_status_label.configure(text=f"🔴 [{self.sell_trigger_key.get().upper()}] 키로 시작")
-            self.sell_status_frame.configure(fg_color="#3d1a1a")
             self.update_idletasks()  # UI 즉시 반영
-            self.play_sound(True)
         else:
             self.sell_active = False
             self.sell_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.sell_status_label.configure(text="⏸️ 대기 중")
-            self.sell_status_frame.configure(fg_color="#1a1a2e")
             self.sell_progress_label.configure(text="")
             self.update_idletasks()  # UI 즉시 반영
-            self.play_sound(False)
         # Home 탭 상태 즉시 업데이트
         self.update_home_status_now()
 
@@ -1616,7 +1638,6 @@ class ColorClickerApp(ctk.CTk):
         if self.sell_active:
             self.sell_active = False
             self.after(0, lambda: self.sell_status_label.configure(text="⏹️ 중지됨"))
-            self.after(0, lambda: self.sell_status_frame.configure(fg_color="#3d3d1a"))
         else:
             self.sell_active = True
             self.run_fast_sell()
@@ -1630,7 +1651,6 @@ class ColorClickerApp(ctk.CTk):
             delay = self.sell_delay.get()
 
             self.after(0, lambda: self.sell_status_label.configure(text="💰 파는 중..."))
-            self.after(0, lambda: self.sell_status_frame.configure(fg_color="#1a3d1a"))
 
             sold = 0
             for i, (x, y, col) in enumerate(positions):
@@ -1653,7 +1673,6 @@ class ColorClickerApp(ctk.CTk):
 
             self.sell_active = False
             self.after(0, lambda: self.sell_status_label.configure(text="✅ 완료!"))
-            self.after(0, lambda: self.sell_status_frame.configure(fg_color="#1a1a2e"))
             self.after(0, lambda s=sold: self.sell_progress_label.configure(
                 text=f"총 {s}개 판매"))
 
@@ -1959,19 +1978,6 @@ class ColorClickerApp(ctk.CTk):
             switch.pack(side="right", padx=10)
             self.home_switches[running_attr] = switch
 
-        # === 소리 알림 설정 ===
-        sound_frame = ctk.CTkFrame(home_frame)
-        sound_frame.pack(fill="x", pady=10, padx=10)
-
-        sound_inner = ctk.CTkFrame(sound_frame, fg_color="transparent")
-        sound_inner.pack(fill="x", padx=10, pady=10)
-
-        ctk.CTkLabel(sound_inner, text="🔔 소리 알림",
-                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(side="left")
-        ctk.CTkLabel(sound_inner, text="(기능 ON/OFF 시 효과음)",
-                     text_color="gray", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left", padx=10)
-        ctk.CTkSwitch(sound_inner, text="", variable=self.sound_enabled, width=40).pack(side="right", padx=10)
-
         # === 오버레이 컨트롤 ===
         overlay_frame = ctk.CTkFrame(home_frame)
         overlay_frame.pack(fill="x", pady=10, padx=10)
@@ -2190,39 +2196,33 @@ class ColorClickerApp(ctk.CTk):
             self.detection_active = False
             self.start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.status_label.configure(text="⏸️ 대기 중")
-            self.status_frame.configure(fg_color="#1a1a2e")
 
         if self.inv_running:
             self.inv_running = False
             self.inv_cleanup_active = False
             self.inv_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.inv_status_label.configure(text="⏸️ 대기 중")
-            self.inv_status_frame.configure(fg_color="#1a1a2e")
 
         if self.discard_running:
             self.discard_running = False
             self.discard_active = False
             self.discard_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.discard_status_label.configure(text="⏸️ 대기 중")
-            self.discard_status_frame.configure(fg_color="#1a1a2e")
 
         if self.sell_running:
             self.sell_running = False
             self.sell_active = False
             self.sell_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.sell_status_label.configure(text="⏸️ 대기 중")
-            self.sell_status_frame.configure(fg_color="#1a1a2e")
 
         if self.consume_running:
             self.consume_running = False
             self.consume_active = False
             self.consume_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.consume_status_label.configure(text="⏸️ 대기 중")
-            self.consume_status_frame.configure(fg_color="#1a1a2e")
 
         # Home 탭 상태 즉시 업데이트
         self.after(10, self.update_home_status_now)
-        self.play_sound(False)
 
     def apply_auto_start(self):
         """자동 시작 설정 적용"""
@@ -2239,44 +2239,40 @@ class ColorClickerApp(ctk.CTk):
 
     def start_all_functions(self):
         """모든 기능 시작 (한번에 UI 업데이트)"""
-        # 상태 변경
+        # 상태 변경 (UI 업데이트 최소화)
         if not self.is_running:
             self.is_running = True
             self.detection_active = False
             self.start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.status_label.configure(text=f"🔴 [{self.trigger_key.get().upper()}] 키로 시작")
-            self.status_frame.configure(fg_color="#3d1a1a")
-            self.setup_hotkey()
-            self.run_detection()
 
         if not self.inv_running:
             self.inv_running = True
             self.inv_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.inv_status_label.configure(text=f"🔴 [{self.inv_trigger_key.get().upper()}] 키로 시작")
-            self.inv_status_frame.configure(fg_color="#3d1a1a")
 
         if not self.discard_running:
             self.discard_running = True
             self.discard_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.discard_status_label.configure(text=f"🔴 [{self.discard_trigger_key.get().upper()}] 키로 시작")
-            self.discard_status_frame.configure(fg_color="#3d1a1a")
 
         if not self.sell_running:
             self.sell_running = True
             self.sell_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.sell_status_label.configure(text=f"🔴 [{self.sell_trigger_key.get().upper()}] 키로 시작")
-            self.sell_status_frame.configure(fg_color="#3d1a1a")
 
         if not self.consume_running:
             self.consume_running = True
             self.consume_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.consume_status_label.configure(text=f"🔴 [{self.consume_trigger_key.get().upper()}] 키로 시작")
-            self.consume_status_frame.configure(fg_color="#3d1a1a")
+
+        # 핫키 설정 및 감지 시작 (상태 변경 후)
+        self.setup_hotkey()
+        self.run_detection()
 
         # UI 한번에 업데이트
         self.update_idletasks()
         self.update_home_status_now()
-        self.play_sound(True)
 
     def stop_all_functions(self):
         """모든 기능 중지 (한번에 UI 업데이트)"""
@@ -2286,60 +2282,34 @@ class ColorClickerApp(ctk.CTk):
             self.detection_active = False
             self.start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.status_label.configure(text="⏸️ 대기 중")
-            self.status_frame.configure(fg_color="#1a1a2e")
 
         if self.inv_running:
             self.inv_running = False
             self.inv_cleanup_active = False
             self.inv_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.inv_status_label.configure(text="⏸️ 대기 중")
-            self.inv_status_frame.configure(fg_color="#1a1a2e")
 
         if self.discard_running:
             self.discard_running = False
             self.discard_active = False
             self.discard_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.discard_status_label.configure(text="⏸️ 대기 중")
-            self.discard_status_frame.configure(fg_color="#1a1a2e")
 
         if self.sell_running:
             self.sell_running = False
             self.sell_active = False
             self.sell_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.sell_status_label.configure(text="⏸️ 대기 중")
-            self.sell_status_frame.configure(fg_color="#1a1a2e")
 
         if self.consume_running:
             self.consume_running = False
             self.consume_active = False
             self.consume_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.consume_status_label.configure(text="⏸️ 대기 중")
-            self.consume_status_frame.configure(fg_color="#1a1a2e")
 
         # UI 한번에 업데이트
         self.update_idletasks()
         self.update_home_status_now()
-        self.play_sound(False)
-
-    def play_sound(self, is_on):
-        """소리 알림 재생 (비동기 - UI 블로킹 방지)"""
-        if not self.sound_enabled.get():
-            return
-        # 전체 시작/중지 중일 때는 개별 소리 억제
-        if getattr(self, '_suppress_sound', False):
-            return
-
-        def beep():
-            try:
-                if is_on:
-                    winsound.Beep(880, 150)  # ON: 높은 음
-                else:
-                    winsound.Beep(440, 100)  # OFF: 낮은 음
-            except:
-                pass
-
-        # 별도 스레드에서 소리 재생 (UI 블로킹 방지)
-        threading.Thread(target=beep, daemon=True).start()
 
     def export_config(self):
         """설정을 파일로 내보내기 (클랜원 공유용)"""
@@ -2440,7 +2410,7 @@ class ColorClickerApp(ctk.CTk):
                 'y': self.overlay_y.get(),
                 'alpha': self.overlay_alpha.get()
             },
-            'sound_enabled': self.sound_enabled.get(),
+            'boss_alert_enabled': self.boss_alert_enabled.get(),
             'emergency_stop_key': self.emergency_stop_key.get(),
             'auto_start': {
                 'belial': self.auto_start_belial.get(),
@@ -2523,7 +2493,7 @@ class ColorClickerApp(ctk.CTk):
             self.overlay_alpha.set(overlay.get('alpha', 0.85))
             self.alpha_label.configure(text=f"{int(self.overlay_alpha.get() * 100)}%")
 
-        self.sound_enabled.set(config.get('sound_enabled', True))
+        self.boss_alert_enabled.set(config.get('boss_alert_enabled', True))
 
         self.emergency_stop_key.set(config.get('emergency_stop_key', 'f12'))
         self.emergency_key_display.configure(text=self.emergency_stop_key.get().upper())
@@ -2906,11 +2876,11 @@ class ColorClickerApp(ctk.CTk):
 
         # 각 기능 상태
         functions = [
-            ("벨리알", self.trigger_key, self.trigger_modifier, "is_running"),
-            ("꾸러기", self.inv_trigger_key, self.inv_trigger_modifier, "inv_running"),
             ("버리기", self.discard_trigger_key, self.discard_trigger_modifier, "discard_running"),
-            ("팔기", self.sell_trigger_key, self.sell_trigger_modifier, "sell_running"),
             ("먹기", self.consume_trigger_key, self.consume_trigger_modifier, "consume_running"),
+            ("팔기", self.sell_trigger_key, self.sell_trigger_modifier, "sell_running"),
+            ("꾸러기", self.inv_trigger_key, self.inv_trigger_modifier, "inv_running"),
+            ("벨리알", self.trigger_key, self.trigger_modifier, "is_running"),
         ]
 
         self.overlay_labels = {}
@@ -3041,17 +3011,13 @@ class ColorClickerApp(ctk.CTk):
         if self.consume_running:
             self.consume_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.consume_status_label.configure(text=f"🔴 [{self.consume_trigger_key.get().upper()}] 키로 시작")
-            self.consume_status_frame.configure(fg_color="#3d1a1a")
             self.update_idletasks()  # UI 즉시 반영
-            self.play_sound(True)
         else:
             self.consume_active = False
             self.consume_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.consume_status_label.configure(text="⏸️ 대기 중")
-            self.consume_status_frame.configure(fg_color="#1a1a2e")
             self.consume_progress_label.configure(text="")
             self.update_idletasks()  # UI 즉시 반영
-            self.play_sound(False)
         # Home 탭 상태 즉시 업데이트
         self.update_home_status_now()
 
@@ -3075,7 +3041,6 @@ class ColorClickerApp(ctk.CTk):
         if self.consume_active:
             self.consume_active = False
             self.after(0, lambda: self.consume_status_label.configure(text="⏹️ 중지됨"))
-            self.after(0, lambda: self.consume_status_frame.configure(fg_color="#3d3d1a"))
         else:
             self.consume_active = True
             self.run_fast_consume()
@@ -3088,7 +3053,6 @@ class ColorClickerApp(ctk.CTk):
             input_type = self.consume_input_type.get()
 
             self.after(0, lambda: self.consume_status_label.configure(text=f"🍖 먹는 중... ({input_type})"))
-            self.after(0, lambda: self.consume_status_frame.configure(fg_color="#1a3d3d"))
 
             consumed = 0
             while self.consume_active:
@@ -3114,7 +3078,6 @@ class ColorClickerApp(ctk.CTk):
                         text=f"{c}회"))
 
             self.after(0, lambda: self.consume_status_label.configure(text="⏹️ 중지됨"))
-            self.after(0, lambda: self.consume_status_frame.configure(fg_color="#1a1a2e"))
             self.after(0, lambda c=consumed: self.consume_progress_label.configure(
                 text=f"총 {c}회 입력"))
 
@@ -3193,16 +3156,12 @@ class ColorClickerApp(ctk.CTk):
         if self.inv_running:
             self.inv_start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.inv_status_label.configure(text=f"🔴 [{self.inv_trigger_key.get().upper()}] 키로 시작")
-            self.inv_status_frame.configure(fg_color="#3d1a1a")
             self.update_idletasks()  # UI 즉시 반영
-            self.play_sound(True)
         else:
             self.inv_start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.inv_status_label.configure(text="⏸️ 대기 중")
-            self.inv_status_frame.configure(fg_color="#1a1a2e")
             self.inv_progress_label.configure(text="")
             self.update_idletasks()  # UI 즉시 반영
-            self.play_sound(False)
         # Home 탭 상태 즉시 업데이트
         self.update_home_status_now()
 
@@ -3504,7 +3463,6 @@ class ColorClickerApp(ctk.CTk):
 
             # ========== 1단계: 스캔 + 즐겨찾기 ==========
             self.after(0, lambda: self.inv_status_label.configure(text="🔍 1단계: 스캔 중..."))
-            self.after(0, lambda: self.inv_status_frame.configure(fg_color="#1a3d1a"))
 
             # 첫 번째 슬롯에서 0.3초 호버링 (게임 초기 인식)
             if positions:
@@ -3602,7 +3560,6 @@ class ColorClickerApp(ctk.CTk):
 
             self.inv_cleanup_active = False
             self.after(0, lambda: self.inv_status_label.configure(text="✅ 완료!"))
-            self.after(0, lambda: self.inv_status_frame.configure(fg_color="#1a1a2e"))
             self.after(0, lambda f=len(favorite_slots), d=discarded: self.inv_progress_label.configure(
                 text=f"⭐ 보존: {f}개 | 🗑️ 버림: {d}개"))
 
@@ -4108,7 +4065,6 @@ class ColorClickerApp(ctk.CTk):
             # 실행 중이면 중지
             self.inv_cleanup_active = False
             self.after(0, lambda: self.inv_status_label.configure(text="⏹️ 중지됨"))
-            self.after(0, lambda: self.inv_status_frame.configure(fg_color="#3d3d1a"))
         else:
             # 실행 중 아니면 시작
             self.inv_cleanup_active = True
@@ -4123,29 +4079,23 @@ class ColorClickerApp(ctk.CTk):
         self.detection_active = not self.detection_active
         if self.detection_active:
             self.after(0, lambda: self.status_label.configure(text="🟢 검색 활성화"))
-            self.after(0, lambda: self.status_frame.configure(fg_color="#1a3d1a"))
         else:
             self.after(0, lambda: self.status_label.configure(text="🔴 검색 비활성화"))
-            self.after(0, lambda: self.status_frame.configure(fg_color="#3d1a1a"))
 
     def toggle_running(self):
         self.is_running = not self.is_running
         if self.is_running:
             self.start_btn.configure(text="⏹️ 중지", fg_color="#dc3545", hover_color="#c82333")
             self.status_label.configure(text=f"🔴 [{self.trigger_key.get().upper()}] 키로 시작")
-            self.status_frame.configure(fg_color="#3d1a1a")
             self.update_idletasks()  # UI 즉시 반영
             self.detection_active = False
             self.setup_hotkey()
             self.run_detection()
-            self.play_sound(True)
         else:
             self.start_btn.configure(text="▶️ 시작", fg_color="#28a745", hover_color="#218838")
             self.status_label.configure(text="⏸️ 대기 중")
-            self.status_frame.configure(fg_color="#1a1a2e")
             self.update_idletasks()  # UI 즉시 반영
             self.detection_active = False
-            self.play_sound(False)
         # Home 탭 상태 즉시 업데이트
         self.update_home_status_now()
 
@@ -4495,8 +4445,8 @@ class ColorClickerApp(ctk.CTk):
                 'alpha': self.overlay_alpha.get(),
                 'bg_color': self.overlay_bg_color.get()
             },
-            # 소리 알림 설정
-            'sound_enabled': self.sound_enabled.get(),
+            # 월드보스 알림 설정
+            'boss_alert_enabled': self.boss_alert_enabled.get(),
             # 긴급 정지 키
             'emergency_stop_key': self.emergency_stop_key.get(),
             # 자동 시작 설정
@@ -4616,8 +4566,8 @@ class ColorClickerApp(ctk.CTk):
                 if hasattr(self, 'bg_color_preview'):
                     self.bg_color_preview.configure(fg_color=self.overlay_bg_color.get())
 
-            # 소리 알림 설정 불러오기
-            self.sound_enabled.set(config.get('sound_enabled', True))
+            # 월드보스 알림 설정 불러오기
+            self.boss_alert_enabled.set(config.get('boss_alert_enabled', True))
 
             # 긴급 정지 키 불러오기
             self.emergency_stop_key.set(config.get('emergency_stop_key', 'f12'))
@@ -4998,6 +4948,11 @@ del /f /q "{new_exe}" 2>nul
                 # 5분 이하면 빨간색
                 if total_seconds <= 300:
                     time_color = "#ff4444"
+                    # 5분 전 알림 (각 보스당 1회만)
+                    if self.boss_alert_enabled.get():
+                        if self.boss_alerted_id != self.world_boss_timestamp:
+                            self.boss_alerted_id = self.world_boss_timestamp
+                            self.play_boss_alert()
                 elif total_seconds <= 600:
                     time_color = "#ffaa00"
                 else:
@@ -5033,6 +4988,27 @@ del /f /q "{new_exe}" 2>nul
         if hasattr(self, 'home_boss_time'):
             self.home_boss_time.configure(text="")
         threading.Thread(target=self.fetch_world_boss_info, daemon=True).start()
+
+    def play_boss_alert(self):
+        """월드보스 5분 전 알림 소리 재생 (따르릉 따르릉 2번)"""
+        def alert_sound():
+            try:
+                import time
+                # 따르릉 따르릉 (전화벨 느낌) 2번 반복
+                for _ in range(2):
+                    # 첫 번째 따르릉
+                    winsound.Beep(800, 100)
+                    time.sleep(0.05)
+                    winsound.Beep(1000, 100)
+                    time.sleep(0.1)
+                    # 두 번째 따르릉
+                    winsound.Beep(800, 100)
+                    time.sleep(0.05)
+                    winsound.Beep(1000, 100)
+                    time.sleep(0.3)  # 반복 사이 간격
+            except:
+                pass
+        threading.Thread(target=alert_sound, daemon=True).start()
 
     # ============================================================
     # === 오버레이 배경색 커스터마이징 ===
