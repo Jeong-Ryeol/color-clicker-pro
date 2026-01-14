@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.6.0"
+VERSION = "1.6.1"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -449,34 +449,29 @@ class ColorClickerApp(ctk.CTk):
                       command=self.refresh_world_boss,
                       fg_color="#555555").pack(pady=5)
 
-        # 알림 설정
-        alert_box = self.create_section_box(row2, "알림", "🔔")
-        alert_box.master.pack(side="left", fill="both", expand=True, padx=2)
+        # 알림 + 긴급 정지 (합쳐서 한 박스로)
+        alert_emergency_box = self.create_section_box(row2, "알림 / 긴급정지", "🔔")
+        alert_emergency_box.master.pack(side="left", fill="both", expand=True, padx=2)
 
-        boss_alert_row = ctk.CTkFrame(alert_box, fg_color="transparent")
-        boss_alert_row.pack(fill="x", pady=10)
-        ctk.CTkLabel(boss_alert_row, text="월드보스 알림", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
+        # 월드보스 알림
+        boss_alert_row = ctk.CTkFrame(alert_emergency_box, fg_color="transparent")
+        boss_alert_row.pack(fill="x", pady=3)
+        ctk.CTkLabel(boss_alert_row, text="월드보스 알림", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
         ctk.CTkSwitch(boss_alert_row, text="", variable=self.boss_alert_enabled, width=40).pack(side="right")
 
-        ctk.CTkLabel(alert_box, text="월드보스 5분 전\n소리 알림",
-                     font=ctk.CTkFont(family=DEFAULT_FONT, size=10), text_color="#888888").pack(pady=5)
+        # 구분선
+        ctk.CTkFrame(alert_emergency_box, height=1, fg_color="#444444").pack(fill="x", pady=5)
 
         # 긴급 정지 키
-        emergency_box = self.create_section_box(row2, "긴급 정지", "🛑")
-        emergency_box.master.pack(side="left", fill="both", expand=True, padx=2)
-
-        key_row = ctk.CTkFrame(emergency_box, fg_color="transparent")
-        key_row.pack(fill="x", pady=5)
-        ctk.CTkLabel(key_row, text="키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
+        key_row = ctk.CTkFrame(alert_emergency_box, fg_color="transparent")
+        key_row.pack(fill="x", pady=3)
+        ctk.CTkLabel(key_row, text="긴급정지:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
         self.emergency_key_display = ctk.CTkLabel(key_row, text="F12",
-                                                   font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
+                                                   font=ctk.CTkFont(family=DEFAULT_FONT, size=13, weight="bold"),
                                                    text_color="#ff4444")
         self.emergency_key_display.pack(side="left", padx=5)
-        ctk.CTkButton(key_row, text="변경", width=50, height=25,
+        ctk.CTkButton(key_row, text="변경", width=45, height=22,
                       command=self.change_emergency_key).pack(side="right")
-
-        ctk.CTkLabel(emergency_box, text="모든 기능\n즉시 중지",
-                     font=ctk.CTkFont(family=DEFAULT_FONT, size=10), text_color="#888888").pack(pady=5)
 
     # === 벨리알 컨텐츠 ===
     def create_belial_content(self, parent):
@@ -891,81 +886,73 @@ class ColorClickerApp(ctk.CTk):
 
         ctk.CTkLabel(scroll, text="💡 모든 기능은 핫키를 다시 누르면 멈춥니다!",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold"),
-                     text_color="#00ff00").pack(pady=5)
+                     text_color="#00ff00", wraplength=400).pack(pady=5)
 
         # 벨리알
         box1 = self.create_section_box(scroll, "👁️ 벨리알 (아이템 줍기)", "")
-        ctk.CTkLabel(box1, text="""바닥에 떨어진 아이템을 자동으로 클릭해서 줍습니다.
-
-1. [화면추출] 버튼 클릭
-2. 게임 화면에서 아이템 이름 색상 클릭
-3. [시작] 버튼으로 기능 켜기
-4. 게임에서 핫키 누르면 자동 줍기 시작
-5. 다시 핫키 누르면 멈춤
-
-※ 제외 색상: 줍지 말아야 할 아이템 색상 등록""",
+        ctk.CTkLabel(box1, text="바닥에 떨어진 아이템을 자동으로 클릭해서 줍습니다.\n\n"
+                     "1. [화면추출] 버튼 클릭\n"
+                     "2. 게임 화면에서 아이템 이름 색상 클릭\n"
+                     "3. [시작] 버튼으로 기능 켜기\n"
+                     "4. 게임에서 핫키 누르면 자동 줍기 시작\n"
+                     "5. 다시 핫키 누르면 멈춤\n\n"
+                     "※ 제외 색상: 줍지 말아야 할 아이템 색상 등록",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
-                     justify="left").pack(anchor="w", padx=10, pady=5)
+                     justify="left", wraplength=380).pack(anchor="w", padx=10, pady=5)
 
         # 신화장난꾸러기
         box2 = self.create_section_box(scroll, "✨ 신화장난꾸러기 (인벤 정리)", "")
-        ctk.CTkLabel(box2, text="""인벤토리에서 신화 장난꾸러기만 즐겨찾기 등록합니다.
-
-1. [추출] 버튼으로 보존할 색상 등록
-2. [영역 설정]으로 인벤토리 영역 드래그
-3. [시작] 버튼으로 기능 켜기
-4. 게임에서 핫키 누르면 자동 즐겨찾기 시작
-5. 다시 핫키 누르면 멈춤
-
-※ 스페이스바로 즐겨찾기 등록됩니다""",
+        ctk.CTkLabel(box2, text="인벤토리에서 신화 장난꾸러기만 즐겨찾기 등록합니다.\n\n"
+                     "1. [추출] 버튼으로 보존할 색상 등록\n"
+                     "2. [영역 설정]으로 인벤토리 영역 드래그\n"
+                     "3. [시작] 버튼으로 기능 켜기\n"
+                     "4. 게임에서 핫키 누르면 자동 즐겨찾기 시작\n"
+                     "5. 다시 핫키 누르면 멈춤\n\n"
+                     "※ 스페이스바로 즐겨찾기 등록됩니다",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
-                     justify="left").pack(anchor="w", padx=10, pady=5)
+                     justify="left", wraplength=380).pack(anchor="w", padx=10, pady=5)
 
         # 버리기
         box3 = self.create_section_box(scroll, "🗑️ 아이템 버리기", "")
-        ctk.CTkLabel(box3, text="""인벤토리의 아이템을 Ctrl+클릭으로 버립니다.
-
-1. [시작] 버튼으로 기능 켜기
-2. 게임에서 인벤토리 열기
-3. 버릴 아이템 위에 마우스 올리기
-4. 핫키 누르면 Ctrl+클릭 반복 시작
-5. 다시 핫키 누르면 멈춤""",
+        ctk.CTkLabel(box3, text="인벤토리의 아이템을 Ctrl+클릭으로 버립니다.\n\n"
+                     "1. [시작] 버튼으로 기능 켜기\n"
+                     "2. 게임에서 인벤토리 열기\n"
+                     "3. 버릴 아이템 위에 마우스 올리기\n"
+                     "4. 핫키 누르면 Ctrl+클릭 반복 시작\n"
+                     "5. 다시 핫키 누르면 멈춤",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
-                     justify="left").pack(anchor="w", padx=10, pady=5)
+                     justify="left", wraplength=380).pack(anchor="w", padx=10, pady=5)
 
         # 팔기
         box4 = self.create_section_box(scroll, "💰 아이템 팔기", "")
-        ctk.CTkLabel(box4, text="""상점에서 아이템을 우클릭으로 판매합니다.
-
-1. [시작] 버튼으로 기능 켜기
-2. 게임에서 상점 열기
-3. 팔 아이템 위에 마우스 올리기
-4. 핫키 누르면 우클릭 반복 시작
-5. 다시 핫키 누르면 멈춤""",
+        ctk.CTkLabel(box4, text="상점에서 아이템을 우클릭으로 판매합니다.\n\n"
+                     "1. [시작] 버튼으로 기능 켜기\n"
+                     "2. 게임에서 상점 열기\n"
+                     "3. 팔 아이템 위에 마우스 올리기\n"
+                     "4. 핫키 누르면 우클릭 반복 시작\n"
+                     "5. 다시 핫키 누르면 멈춤",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
-                     justify="left").pack(anchor="w", padx=10, pady=5)
+                     justify="left", wraplength=380).pack(anchor="w", padx=10, pady=5)
 
         # 먹기
         box5 = self.create_section_box(scroll, "🍖 아이템 먹기", "")
-        ctk.CTkLabel(box5, text="""설정한 키를 빠르게 반복합니다.
-
-1. [누를 키]에서 사용할 키 설정 (예: 우클릭)
-2. [시작] 버튼으로 기능 켜기
-3. 사용할 아이템 위에 마우스 올리기
-4. 핫키 누르면 설정한 키 빠르게 반복
-5. 다시 핫키 누르면 멈춤""",
+        ctk.CTkLabel(box5, text="설정한 키를 빠르게 반복합니다.\n\n"
+                     "1. [누를 키]에서 사용할 키 설정 (예: 우클릭)\n"
+                     "2. [시작] 버튼으로 기능 켜기\n"
+                     "3. 사용할 아이템 위에 마우스 올리기\n"
+                     "4. 핫키 누르면 설정한 키 빠르게 반복\n"
+                     "5. 다시 핫키 누르면 멈춤",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
-                     justify="left").pack(anchor="w", padx=10, pady=5)
+                     justify="left", wraplength=380).pack(anchor="w", padx=10, pady=5)
 
         # 긴급 정지
         box6 = self.create_section_box(scroll, "🛑 긴급 정지", "")
-        ctk.CTkLabel(box6, text="""모든 기능을 한번에 끕니다.
-
-• 기본 키: F12
-• Home 탭에서 키 변경 가능
-• 뭔가 잘못되면 바로 누르세요!""",
+        ctk.CTkLabel(box6, text="모든 기능을 한번에 끕니다.\n\n"
+                     "• 기본 키: F12\n"
+                     "• Home 탭에서 키 변경 가능\n"
+                     "• 뭔가 잘못되면 바로 누르세요!",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=11),
-                     justify="left").pack(anchor="w", padx=10, pady=5)
+                     justify="left", wraplength=380).pack(anchor="w", padx=10, pady=5)
 
     # === 패치노트 컨텐츠 ===
     def create_patch_content(self, parent):
@@ -4824,8 +4811,7 @@ class ColorClickerApp(ctk.CTk):
             if file_size < 10000000:
                 raise Exception(f"파일이 불완전합니다 ({file_size // 1048576}MB). 인터넷 연결을 확인하세요.")
 
-            # 배치 스크립트로 교체 (앱 종료 후 실행)
-            # 경로에 공백이 있을 수 있으므로 짧은 경로 사용
+            # 배치 스크립트로 교체 (앱 종료 후 실행, 자동 재시작 안함)
             batch_content = f'''@echo off
 chcp 65001 > nul
 title Wonryeol Helper Updater
@@ -4864,13 +4850,8 @@ echo ========================================
 echo   업데이트 완료!
 echo ========================================
 echo.
-echo 5초 후 프로그램을 시작합니다...
-timeout /t 5
-
-echo 프로그램 시작 중...
-cd /d "{exe_dir}"
-start /b "" "{os.path.basename(current_exe)}"
-
+echo 프로그램을 다시 실행해주세요.
+echo.
 timeout /t 3 /nobreak > nul
 del /f /q "{backup_exe}" 2>nul
 del /f /q "{new_exe}" 2>nul
@@ -4880,7 +4861,10 @@ del /f /q "{new_exe}" 2>nul
             with open(batch_path, 'w', encoding='utf-8') as f:
                 f.write(batch_content)
 
-            # 배치 실행 및 앱 종료
+            # 알림 후 배치 실행 및 앱 종료
+            self.after(0, lambda: messagebox.showinfo("업데이트 완료",
+                "업데이트가 다운로드되었습니다.\n\n프로그램을 종료하고 업데이트를 적용합니다.\n완료 후 프로그램을 다시 실행해주세요!"))
+
             import subprocess
             os.chdir(exe_dir)
             subprocess.Popen(f'cmd /c "{batch_path}"', shell=True)
