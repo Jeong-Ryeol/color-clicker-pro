@@ -3705,29 +3705,61 @@ del "%~f0"
         try:
             url = "https://helltides.com/worldboss"
             req = urllib.request.Request(url)
-            req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+            req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+            req.add_header('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8')
 
             with urllib.request.urlopen(req, timeout=15) as response:
                 html = response.read().decode('utf-8')
 
-                # JSON 데이터 추출 (페이지 내 __NUXT__ 데이터에서)
-                # startTime 형식: "2026-01-14T02:30:00.000Z"
-                time_match = re.search(r'"startTime":"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)"', html)
-                boss_match = re.search(r'"boss":"([^"]+)"', html)
-                zone_match = re.search(r'"zone":"([^"]+)"', html)
+                # 여러 패턴으로 시도
+                # 패턴 1: world_boss 타입의 이벤트 찾기
+                event_pattern = r'"type"\s*:\s*"world_boss"[^}]*"boss"\s*:\s*"([^"]+)"[^}]*"startTime"\s*:\s*"([^"]+)"[^}]*"zone"\s*:\s*"([^"]+)"'
+                event_match = re.search(event_pattern, html, re.DOTALL)
 
-                if time_match and boss_match:
-                    start_time_str = time_match.group(1)
-                    boss_name = boss_match.group(1)
-                    zone = zone_match.group(1) if zone_match else "Unknown"
+                # 패턴 2: 순서가 다를 수 있음
+                if not event_match:
+                    boss_match = re.search(r'"boss"\s*:\s*"(Ashava|Avarice|Wandering Death|Azmodan)"', html)
+                    time_match = re.search(r'"startTime"\s*:\s*"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z?)"', html)
+                    zone_match = re.search(r'"zone"\s*:\s*"([^"]+)"', html)
 
-                    # ISO 형식 파싱
-                    self.world_boss_timestamp = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
-
-                    # UI 업데이트 (메인 스레드)
-                    self.after(0, lambda: self._update_boss_ui(boss_name, zone))
+                    if boss_match and time_match:
+                        boss_name = boss_match.group(1)
+                        start_time_str = time_match.group(1)
+                        zone_raw = zone_match.group(1) if zone_match else "unknown"
+                    else:
+                        # 패턴 3: timestamp로 시도
+                        timestamp_match = re.search(r'"timestamp"\s*:\s*(\d{10,13})[^}]*"boss"\s*:\s*"([^"]+)"', html)
+                        if timestamp_match:
+                            timestamp = int(timestamp_match.group(1))
+                            if timestamp > 9999999999:  # 밀리초
+                                timestamp = timestamp // 1000
+                            self.world_boss_timestamp = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+                            boss_name = timestamp_match.group(2)
+                            zone_raw = "unknown"
+                            zone_display = self._format_zone_name(zone_raw)
+                            self.after(0, lambda b=boss_name, z=zone_display: self._update_boss_ui(b, z))
+                            self.after(300000, lambda: threading.Thread(target=self.fetch_world_boss_info, daemon=True).start())
+                            return
+                        else:
+                            self.after(0, lambda: self._update_boss_ui("정보 없음", ""))
+                            self.after(300000, lambda: threading.Thread(target=self.fetch_world_boss_info, daemon=True).start())
+                            return
                 else:
-                    self.after(0, lambda: self._update_boss_ui("정보 없음", ""))
+                    boss_name = event_match.group(1)
+                    start_time_str = event_match.group(2)
+                    zone_raw = event_match.group(3)
+
+                # 시간 파싱
+                if not start_time_str.endswith('Z'):
+                    start_time_str += 'Z'
+                start_time_str = start_time_str.replace('Z', '+00:00')
+                self.world_boss_timestamp = datetime.fromisoformat(start_time_str)
+
+                # 지역명 포맷팅
+                zone_display = self._format_zone_name(zone_raw)
+
+                # UI 업데이트 (메인 스레드)
+                self.after(0, lambda b=boss_name, z=zone_display: self._update_boss_ui(b, z))
 
         except Exception as e:
             print(f"월드 보스 정보 가져오기 실패: {e}")
@@ -3735,6 +3767,17 @@ del "%~f0"
 
         # 5분 후 다시 가져오기
         self.after(300000, lambda: threading.Thread(target=self.fetch_world_boss_info, daemon=True).start())
+
+    def _format_zone_name(self, zone_raw):
+        """지역명 포맷팅 (fractured_peaks -> Fractured Peaks)"""
+        zone_names = {
+            "fractured_peaks": "Fractured Peaks",
+            "scosglen": "Scosglen",
+            "dry_steppes": "Dry Steppes",
+            "kehjistan": "Kehjistan",
+            "nahantu": "Nahantu"
+        }
+        return zone_names.get(zone_raw, zone_raw.replace('_', ' ').title())
 
     def _update_boss_ui(self, boss_name, zone):
         """월드 보스 UI 업데이트 (메인 스레드)"""
