@@ -118,6 +118,7 @@ class ColorClickerApp(ctk.CTk):
         self.discard_trigger_modifier = ctk.StringVar(value="없음")
         self.discard_last_trigger_time = 0
         self.discard_delay = ctk.DoubleVar(value=0.01)  # 버리기 간격
+        self.discard_count = ctk.IntVar(value=30)  # 반복 횟수
 
         # === 아이템 팔기 탭 변수 ===
         self.sell_running = False
@@ -126,6 +127,7 @@ class ColorClickerApp(ctk.CTk):
         self.sell_trigger_modifier = ctk.StringVar(value="없음")
         self.sell_last_trigger_time = 0
         self.sell_delay = ctk.DoubleVar(value=0.01)  # 팔기 간격
+        self.sell_count = ctk.IntVar(value=30)  # 반복 횟수
 
         # === 아이템 먹기 탭 변수 ===
         self.consume_running = False
@@ -135,6 +137,7 @@ class ColorClickerApp(ctk.CTk):
         self.consume_last_trigger_time = 0
         self.consume_delay = ctk.DoubleVar(value=0.01)  # 먹기 간격
         self.consume_input_type = ctk.StringVar(value="F키")  # F키, 우클릭, 왼클릭
+        self.consume_action_key = ctk.StringVar(value="우클릭")  # 누를 키
 
         # === 오버레이 관련 변수 ===
         self.overlay_window = None
@@ -149,7 +152,7 @@ class ColorClickerApp(ctk.CTk):
         self.sound_enabled = ctk.BooleanVar(value=True)
 
         # === 긴급 정지 핫키 ===
-        self.emergency_stop_key = ctk.StringVar(value="esc")
+        self.emergency_stop_key = ctk.StringVar(value="f12")
 
         # === 자동 시작 설정 ===
         self.auto_start_belial = ctk.BooleanVar(value=False)
@@ -1876,7 +1879,7 @@ class ColorClickerApp(ctk.CTk):
 
         ctk.CTkLabel(emergency_inner, text="긴급 정지 키:",
                      font=ctk.CTkFont(size=12)).pack(side="left")
-        self.emergency_key_display = ctk.CTkLabel(emergency_inner, text="ESC",
+        self.emergency_key_display = ctk.CTkLabel(emergency_inner, text="F12",
                                                    font=ctk.CTkFont(size=14, weight="bold"),
                                                    text_color="#ff4444")
         self.emergency_key_display.pack(side="left", padx=10)
@@ -2291,7 +2294,7 @@ class ColorClickerApp(ctk.CTk):
 
         self.sound_enabled.set(config.get('sound_enabled', True))
 
-        self.emergency_stop_key.set(config.get('emergency_stop_key', 'esc'))
+        self.emergency_stop_key.set(config.get('emergency_stop_key', 'f12'))
         self.emergency_key_display.configure(text=self.emergency_stop_key.get().upper())
 
         auto_start = config.get('auto_start', {})
@@ -4300,7 +4303,7 @@ class ColorClickerApp(ctk.CTk):
             self.sound_enabled.set(config.get('sound_enabled', True))
 
             # 긴급 정지 키 불러오기
-            self.emergency_stop_key.set(config.get('emergency_stop_key', 'esc'))
+            self.emergency_stop_key.set(config.get('emergency_stop_key', 'f12'))
             self.emergency_key_display.configure(text=self.emergency_stop_key.get().upper())
 
             # 자동 시작 설정 불러오기
