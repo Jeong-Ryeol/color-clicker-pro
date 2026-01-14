@@ -46,6 +46,9 @@ except:
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
+# 기본 폰트 설정 (한국어 가독성)
+DEFAULT_FONT = "맑은 고딕"
+
 CONFIG_FILE = "color_clicker_config.json"
 
 
@@ -198,13 +201,13 @@ class ColorClickerApp(ctk.CTk):
 
         # 사이드바 헤더
         ctk.CTkLabel(self.sidebar, text="Wonryeol",
-                     font=ctk.CTkFont(size=16, weight="bold"),
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                      text_color="#00aaff").pack(pady=(15, 0))
         ctk.CTkLabel(self.sidebar, text="Helper",
-                     font=ctk.CTkFont(size=14, weight="bold"),
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
                      text_color="#00aaff").pack()
         ctk.CTkLabel(self.sidebar, text=f"v{VERSION}",
-                     font=ctk.CTkFont(size=10),
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=10),
                      text_color="#666666").pack(pady=(2, 15))
 
         # 구분선
@@ -225,7 +228,7 @@ class ColorClickerApp(ctk.CTk):
 
         for text, key in menus:
             btn = ctk.CTkButton(self.sidebar, text=text, anchor="w",
-                               font=ctk.CTkFont(size=13),
+                               font=ctk.CTkFont(family=DEFAULT_FONT, size=13),
                                fg_color="transparent", hover_color="#2a2a4e",
                                text_color="#cccccc", height=40,
                                command=lambda k=key: self.show_content(k))
@@ -237,7 +240,7 @@ class ColorClickerApp(ctk.CTk):
 
         # 마우스 좌표 (하단)
         self.coord_label = ctk.CTkLabel(self.sidebar, text="마우스: (0, 0)",
-                                        font=ctk.CTkFont(size=9), text_color="#666666")
+                                        font=ctk.CTkFont(family=DEFAULT_FONT, size=9), text_color="#666666")
         self.coord_label.pack(pady=10)
 
         # === 오른쪽 컨텐츠 영역 ===
@@ -314,7 +317,7 @@ class ColorClickerApp(ctk.CTk):
         header.pack_propagate(False)
 
         ctk.CTkLabel(header, text=f"{icon} {title}",
-                     font=ctk.CTkFont(size=14, weight="bold"),
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
                      text_color="white").pack(side="left", padx=15, pady=5)
 
         # 컨텐츠 영역
@@ -338,13 +341,13 @@ class ColorClickerApp(ctk.CTk):
         btn_frame.pack(fill="x", pady=5)
 
         self.all_start_btn = ctk.CTkButton(btn_frame, text="▶ 시작",
-                                            font=ctk.CTkFont(size=14, weight="bold"),
+                                            font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
                                             height=45, command=self.start_all_functions,
                                             fg_color="#28a745", hover_color="#218838")
         self.all_start_btn.pack(fill="x", pady=2)
 
         self.all_stop_btn = ctk.CTkButton(btn_frame, text="⏹ 중지",
-                                           font=ctk.CTkFont(size=14, weight="bold"),
+                                           font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
                                            height=45, command=self.stop_all_functions,
                                            fg_color="#dc3545", hover_color="#c82333")
         self.all_stop_btn.pack(fill="x", pady=2)
@@ -370,15 +373,15 @@ class ColorClickerApp(ctk.CTk):
             row.pack(fill="x", pady=1)
 
             ctk.CTkLabel(row, text=name, width=50, anchor="w",
-                         font=ctk.CTkFont(size=11)).pack(side="left")
+                         font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
 
             key_label = ctk.CTkLabel(row, text="", width=60, anchor="center",
-                                     text_color="#ff9900", font=ctk.CTkFont(size=10, weight="bold"))
+                                     text_color="#ff9900", font=ctk.CTkFont(family=DEFAULT_FONT, size=10, weight="bold"))
             key_label.pack(side="left")
             self.home_key_labels[running_attr] = (key_label, key_var, mod_var)
 
             status_label = ctk.CTkLabel(row, text="OFF", width=30,
-                                        text_color="#666666", font=ctk.CTkFont(size=10))
+                                        text_color="#666666", font=ctk.CTkFont(family=DEFAULT_FONT, size=10))
             status_label.pack(side="left")
             self.home_status_labels[running_attr] = status_label
 
@@ -402,8 +405,8 @@ class ColorClickerApp(ctk.CTk):
 
         alpha_frame = ctk.CTkFrame(overlay_box, fg_color="transparent")
         alpha_frame.pack(fill="x", pady=2)
-        ctk.CTkLabel(alpha_frame, text="투명도", font=ctk.CTkFont(size=10)).pack(side="left")
-        self.alpha_label = ctk.CTkLabel(alpha_frame, text="85%", font=ctk.CTkFont(size=10))
+        ctk.CTkLabel(alpha_frame, text="투명도", font=ctk.CTkFont(family=DEFAULT_FONT, size=10)).pack(side="left")
+        self.alpha_label = ctk.CTkLabel(alpha_frame, text="85%", font=ctk.CTkFont(family=DEFAULT_FONT, size=10))
         self.alpha_label.pack(side="right")
         ctk.CTkSlider(overlay_box, from_=0.3, to=1.0, variable=self.overlay_alpha,
                       command=self.update_overlay_alpha, height=15).pack(fill="x", pady=2)
@@ -430,12 +433,12 @@ class ColorClickerApp(ctk.CTk):
         boss_box.master.pack(side="left", fill="both", expand=True, padx=2)
 
         self.home_boss_name = ctk.CTkLabel(boss_box, text="로딩 중...",
-                                           font=ctk.CTkFont(size=16, weight="bold"),
+                                           font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                                            text_color="#ffaa00")
         self.home_boss_name.pack(pady=5)
 
         self.home_boss_time = ctk.CTkLabel(boss_box, text="",
-                                           font=ctk.CTkFont(size=14, weight="bold"),
+                                           font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
                                            text_color="#00ff00")
         self.home_boss_time.pack()
 
@@ -449,11 +452,11 @@ class ColorClickerApp(ctk.CTk):
 
         sound_row = ctk.CTkFrame(alert_box, fg_color="transparent")
         sound_row.pack(fill="x", pady=10)
-        ctk.CTkLabel(sound_row, text="소리 알림", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkLabel(sound_row, text="소리 알림", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
         ctk.CTkSwitch(sound_row, text="", variable=self.sound_enabled, width=40).pack(side="right")
 
         ctk.CTkLabel(alert_box, text="기능 ON/OFF시\n효과음 재생",
-                     font=ctk.CTkFont(size=10), text_color="#888888").pack(pady=5)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=10), text_color="#888888").pack(pady=5)
 
     # === 벨리알 컨텐츠 ===
     def create_belial_content(self, parent):
@@ -512,7 +515,7 @@ class ColorClickerApp(ctk.CTk):
         ctk.CTkButton(btn_frame, text="삭제", width=50, height=28,
                       command=self.remove_color, fg_color="#dc3545").pack(side="left", padx=1)
 
-        self.picker_status = ctk.CTkLabel(parent, text="", text_color="#00bfff", font=ctk.CTkFont(size=10))
+        self.picker_status = ctk.CTkLabel(parent, text="", text_color="#00bfff", font=ctk.CTkFont(family=DEFAULT_FONT, size=10))
         self.picker_status.pack(pady=2)
 
     def create_exclude_section_content(self, parent):
@@ -536,19 +539,19 @@ class ColorClickerApp(ctk.CTk):
         # 색상 허용 오차
         tol_frame = ctk.CTkFrame(parent, fg_color="transparent")
         tol_frame.pack(fill="x", pady=2)
-        ctk.CTkLabel(tol_frame, text="색상 오차:", font=ctk.CTkFont(size=11)).pack(side="left")
+        ctk.CTkLabel(tol_frame, text="색상 오차:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
         ctk.CTkEntry(tol_frame, textvariable=self.color_tolerance, width=50).pack(side="right")
 
         # 클릭 딜레이
         delay_frame = ctk.CTkFrame(parent, fg_color="transparent")
         delay_frame.pack(fill="x", pady=2)
-        ctk.CTkLabel(delay_frame, text="딜레이(ms):", font=ctk.CTkFont(size=11)).pack(side="left")
+        ctk.CTkLabel(delay_frame, text="딜레이(ms):", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
         ctk.CTkEntry(delay_frame, textvariable=self.click_delay, width=50).pack(side="right")
 
         # 핫키
         key_frame = ctk.CTkFrame(parent, fg_color="transparent")
         key_frame.pack(fill="x", pady=2)
-        ctk.CTkLabel(key_frame, text="핫키:", font=ctk.CTkFont(size=11)).pack(side="left")
+        ctk.CTkLabel(key_frame, text="핫키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
         ctk.CTkComboBox(key_frame, values=["없음", "Ctrl", "Alt", "Shift"],
                         variable=self.trigger_modifier, width=60).pack(side="right", padx=2)
         ctk.CTkEntry(key_frame, textvariable=self.trigger_key, width=40).pack(side="right")
@@ -567,7 +570,7 @@ class ColorClickerApp(ctk.CTk):
 
         # 현재 영역 표시
         self.area_label = ctk.CTkLabel(parent, text="영역: 전체 화면",
-                                       font=ctk.CTkFont(size=10), text_color="#888888")
+                                       font=ctk.CTkFont(family=DEFAULT_FONT, size=10), text_color="#888888")
         self.area_label.pack(pady=2)
 
     def toggle_area_mode(self):
@@ -590,11 +593,11 @@ class ColorClickerApp(ctk.CTk):
         self.start_btn = ctk.CTkButton(parent, text="▶ 시작", height=40,
                                        command=self.toggle_running,
                                        fg_color="#28a745", hover_color="#218838",
-                                       font=ctk.CTkFont(size=14, weight="bold"))
+                                       font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"))
         self.start_btn.pack(fill="x", pady=5)
 
         self.status_label = ctk.CTkLabel(parent, text="⏸️ 대기 중",
-                                         font=ctk.CTkFont(size=12))
+                                         font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
         self.status_label.pack(pady=5)
 
     # === 신화장난꾸러기 컨텐츠 ===
@@ -618,7 +621,7 @@ class ColorClickerApp(ctk.CTk):
 
         tol_row = ctk.CTkFrame(color_box, fg_color="transparent")
         tol_row.pack(fill="x", pady=5)
-        ctk.CTkLabel(tol_row, text="허용오차:", font=ctk.CTkFont(size=11)).pack(side="left")
+        ctk.CTkLabel(tol_row, text="허용오차:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
         ctk.CTkEntry(tol_row, textvariable=self.inv_tolerance, width=50).pack(side="right")
 
         # 설정
@@ -627,14 +630,14 @@ class ColorClickerApp(ctk.CTk):
 
         key_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         key_row.pack(fill="x", pady=2)
-        ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(size=11)).pack(side="left")
+        ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
         ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
                         variable=self.inv_trigger_modifier, width=60).pack(side="right", padx=2)
         ctk.CTkEntry(key_row, textvariable=self.inv_trigger_key, width=40).pack(side="right")
 
         delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         delay_row.pack(fill="x", pady=2)
-        ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(size=11)).pack(side="left")
+        ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
         ctk.CTkEntry(delay_row, textvariable=self.inv_delay, width=50).pack(side="right")
 
         # 컨트롤
@@ -644,11 +647,11 @@ class ColorClickerApp(ctk.CTk):
         self.inv_start_btn = ctk.CTkButton(ctrl_box, text="▶ 시작", height=40,
                                            command=self.toggle_inv_running,
                                            fg_color="#28a745",
-                                           font=ctk.CTkFont(size=14, weight="bold"))
+                                           font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"))
         self.inv_start_btn.pack(fill="x", pady=5)
 
         self.inv_status_label = ctk.CTkLabel(ctrl_box, text="⏸️ 대기 중",
-                                             font=ctk.CTkFont(size=12))
+                                             font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
         self.inv_status_label.pack(pady=5)
 
     # === 아이템 버리기 컨텐츠 ===
@@ -663,19 +666,19 @@ class ColorClickerApp(ctk.CTk):
 
         key_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         key_row.pack(fill="x", pady=5)
-        ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
         ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
                         variable=self.discard_trigger_modifier, width=70).pack(side="right", padx=2)
         ctk.CTkEntry(key_row, textvariable=self.discard_trigger_key, width=50).pack(side="right")
 
         delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         delay_row.pack(fill="x", pady=5)
-        ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
         ctk.CTkEntry(delay_row, textvariable=self.discard_delay, width=60).pack(side="right")
 
         count_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         count_row.pack(fill="x", pady=5)
-        ctk.CTkLabel(count_row, text="반복 횟수:", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkLabel(count_row, text="반복 횟수:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
         ctk.CTkEntry(count_row, textvariable=self.discard_count, width=60).pack(side="right")
 
         # 컨트롤
@@ -685,15 +688,15 @@ class ColorClickerApp(ctk.CTk):
         self.discard_start_btn = ctk.CTkButton(ctrl_box, text="▶ 시작", height=50,
                                                command=self.toggle_discard_running,
                                                fg_color="#28a745",
-                                               font=ctk.CTkFont(size=16, weight="bold"))
+                                               font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"))
         self.discard_start_btn.pack(fill="x", pady=10)
 
         self.discard_status_label = ctk.CTkLabel(ctrl_box, text="⏸️ 대기 중",
-                                                 font=ctk.CTkFont(size=14))
+                                                 font=ctk.CTkFont(family=DEFAULT_FONT, size=14))
         self.discard_status_label.pack(pady=10)
 
         ctk.CTkLabel(ctrl_box, text="💡 마우스를 아이템 위에 놓고\n핫키를 누르면 Ctrl+클릭 반복",
-                     font=ctk.CTkFont(size=11), text_color="#888888").pack(pady=5)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#888888").pack(pady=5)
 
     # === 아이템 먹기 컨텐츠 ===
     def create_consume_content(self, parent):
@@ -707,19 +710,19 @@ class ColorClickerApp(ctk.CTk):
 
         key_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         key_row.pack(fill="x", pady=5)
-        ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
         ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
                         variable=self.consume_trigger_modifier, width=70).pack(side="right", padx=2)
         ctk.CTkEntry(key_row, textvariable=self.consume_trigger_key, width=50).pack(side="right")
 
         delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         delay_row.pack(fill="x", pady=5)
-        ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
         ctk.CTkEntry(delay_row, textvariable=self.consume_delay, width=60).pack(side="right")
 
         action_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         action_row.pack(fill="x", pady=5)
-        ctk.CTkLabel(action_row, text="누를 키:", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkLabel(action_row, text="누를 키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
         ctk.CTkComboBox(action_row, values=["우클릭", "좌클릭", "Space", "E", "F", "R"],
                         variable=self.consume_action_key, width=80).pack(side="right")
 
@@ -730,15 +733,15 @@ class ColorClickerApp(ctk.CTk):
         self.consume_start_btn = ctk.CTkButton(ctrl_box, text="▶ 시작", height=50,
                                                command=self.toggle_consume_running,
                                                fg_color="#28a745",
-                                               font=ctk.CTkFont(size=16, weight="bold"))
+                                               font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"))
         self.consume_start_btn.pack(fill="x", pady=10)
 
         self.consume_status_label = ctk.CTkLabel(ctrl_box, text="⏸️ 대기 중",
-                                                 font=ctk.CTkFont(size=14))
+                                                 font=ctk.CTkFont(family=DEFAULT_FONT, size=14))
         self.consume_status_label.pack(pady=10)
 
         ctk.CTkLabel(ctrl_box, text="💡 선택한 키를 반복해서 누름",
-                     font=ctk.CTkFont(size=11), text_color="#888888").pack(pady=5)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#888888").pack(pady=5)
 
     # === 아이템 팔기 컨텐츠 ===
     def create_sell_content(self, parent):
@@ -752,19 +755,19 @@ class ColorClickerApp(ctk.CTk):
 
         key_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         key_row.pack(fill="x", pady=5)
-        ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
         ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
                         variable=self.sell_trigger_modifier, width=70).pack(side="right", padx=2)
         ctk.CTkEntry(key_row, textvariable=self.sell_trigger_key, width=50).pack(side="right")
 
         delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         delay_row.pack(fill="x", pady=5)
-        ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
         ctk.CTkEntry(delay_row, textvariable=self.sell_delay, width=60).pack(side="right")
 
         count_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         count_row.pack(fill="x", pady=5)
-        ctk.CTkLabel(count_row, text="반복 횟수:", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkLabel(count_row, text="반복 횟수:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
         ctk.CTkEntry(count_row, textvariable=self.sell_count, width=60).pack(side="right")
 
         # 컨트롤
@@ -774,21 +777,21 @@ class ColorClickerApp(ctk.CTk):
         self.sell_start_btn = ctk.CTkButton(ctrl_box, text="▶ 시작", height=50,
                                             command=self.toggle_sell_running,
                                             fg_color="#28a745",
-                                            font=ctk.CTkFont(size=16, weight="bold"))
+                                            font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"))
         self.sell_start_btn.pack(fill="x", pady=10)
 
         self.sell_status_label = ctk.CTkLabel(ctrl_box, text="⏸️ 대기 중",
-                                              font=ctk.CTkFont(size=14))
+                                              font=ctk.CTkFont(family=DEFAULT_FONT, size=14))
         self.sell_status_label.pack(pady=10)
 
         ctk.CTkLabel(ctrl_box, text="💡 상점에서 우클릭 반복",
-                     font=ctk.CTkFont(size=11), text_color="#888888").pack(pady=5)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#888888").pack(pady=5)
 
     # === 사용법 컨텐츠 ===
     def create_help_content(self, parent):
         """사용법 컨텐츠 생성"""
         ctk.CTkLabel(parent, text="📖 사용법 안내",
-                     font=ctk.CTkFont(size=20, weight="bold")).pack(pady=15)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=20, weight="bold")).pack(pady=15)
 
         helps = [
             ("🎯 기본 사용법", "1. 각 메뉴에서 설정\n2. Home에서 [시작] 클릭\n3. 게임에서 핫키 사용"),
@@ -799,16 +802,16 @@ class ColorClickerApp(ctk.CTk):
 
         for title, desc in helps:
             box = self.create_section_box(parent, title, "")
-            ctk.CTkLabel(box, text=desc, font=ctk.CTkFont(size=12),
+            ctk.CTkLabel(box, text=desc, font=ctk.CTkFont(family=DEFAULT_FONT, size=12),
                         justify="left").pack(anchor="w", pady=5)
 
     # === 패치노트 컨텐츠 ===
     def create_patch_content(self, parent):
         """패치노트 컨텐츠 생성"""
         ctk.CTkLabel(parent, text="📋 패치노트",
-                     font=ctk.CTkFont(size=20, weight="bold")).pack(pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=20, weight="bold")).pack(pady=10)
         ctk.CTkLabel(parent, text=f"현재 버전: v{VERSION}",
-                     font=ctk.CTkFont(size=14), text_color="#00aaff").pack(pady=5)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14), text_color="#00aaff").pack(pady=5)
 
         self.patch_notes_container = ctk.CTkFrame(parent, fg_color="transparent")
         self.patch_notes_container.pack(fill="both", expand=True, padx=5, pady=5)
@@ -824,7 +827,7 @@ class ColorClickerApp(ctk.CTk):
         frame = ctk.CTkFrame(self.main_frame)
         frame.pack(fill="x", pady=5)
 
-        ctk.CTkLabel(frame, text="🎨 타겟 색상", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=5)
+        ctk.CTkLabel(frame, text="🎨 타겟 색상", font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold")).pack(pady=5)
 
         # 색상 리스트
         list_frame = ctk.CTkFrame(frame, fg_color="transparent")
@@ -854,7 +857,7 @@ class ColorClickerApp(ctk.CTk):
         frame = ctk.CTkFrame(self.main_frame)
         frame.pack(fill="x", pady=5)
 
-        ctk.CTkLabel(frame, text="🚫 제외 색상", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=5)
+        ctk.CTkLabel(frame, text="🚫 제외 색상", font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold")).pack(pady=5)
         ctk.CTkLabel(frame, text="이 색상이 근처에 있으면 클릭 안 함", text_color="gray").pack()
 
         # 제외 색상 리스트
@@ -883,7 +886,7 @@ class ColorClickerApp(ctk.CTk):
         frame = ctk.CTkFrame(self.main_frame)
         frame.pack(fill="x", pady=5)
 
-        ctk.CTkLabel(frame, text="⚙️ 설정", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=5)
+        ctk.CTkLabel(frame, text="⚙️ 설정", font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold")).pack(pady=5)
 
         # 허용 범위
         tol_frame = ctk.CTkFrame(frame, fg_color="transparent")
@@ -928,7 +931,7 @@ class ColorClickerApp(ctk.CTk):
         ctk.CTkOptionMenu(key_frame, variable=self.trigger_modifier, values=["없음", "Ctrl", "Shift", "Alt"],
                           width=70).pack(side="left", padx=5)
         ctk.CTkLabel(key_frame, text="+").pack(side="left")
-        self.key_display = ctk.CTkLabel(key_frame, text="F1", font=ctk.CTkFont(size=14, weight="bold"),
+        self.key_display = ctk.CTkLabel(key_frame, text="F1", font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
                                          text_color="#00ff00")
         self.key_display.pack(side="left", padx=5)
         ctk.CTkButton(key_frame, text="변경", width=60, command=self.change_trigger_key).pack(side="left")
@@ -976,7 +979,7 @@ class ColorClickerApp(ctk.CTk):
         self.status_frame.pack(fill="x", padx=10, pady=10)
 
         self.status_label = ctk.CTkLabel(self.status_frame, text="⏸️ 대기 중",
-                                          font=ctk.CTkFont(size=20, weight="bold"))
+                                          font=ctk.CTkFont(family=DEFAULT_FONT, size=20, weight="bold"))
         self.status_label.pack(pady=10)
 
         self.coord_label = ctk.CTkLabel(self.status_frame, text="마우스: (0, 0)",
@@ -987,12 +990,12 @@ class ColorClickerApp(ctk.CTk):
         btn_frame = ctk.CTkFrame(frame, fg_color="transparent")
         btn_frame.pack(fill="x", padx=10, pady=10)
 
-        self.start_btn = ctk.CTkButton(btn_frame, text="▶️ 시작", font=ctk.CTkFont(size=16, weight="bold"),
+        self.start_btn = ctk.CTkButton(btn_frame, text="▶️ 시작", font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                                         height=50, command=self.toggle_running,
                                         fg_color="#28a745", hover_color="#218838")
         self.start_btn.pack(side="left", expand=True, fill="x", padx=5)
 
-        ctk.CTkButton(btn_frame, text="💾 저장", font=ctk.CTkFont(size=16), height=50,
+        ctk.CTkButton(btn_frame, text="💾 저장", font=ctk.CTkFont(family=DEFAULT_FONT, size=16), height=50,
                       command=self.save_config, fg_color="#007bff", hover_color="#0056b3").pack(side="left", expand=True, fill="x", padx=5)
 
     def create_inventory_tab(self):
@@ -1002,7 +1005,7 @@ class ColorClickerApp(ctk.CTk):
 
         # === 설명 ===
         ctk.CTkLabel(inv_frame, text="🎭 신화장난꾸러기 필터",
-                     font=ctk.CTkFont(size=20, weight="bold")).pack(pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=20, weight="bold")).pack(pady=10)
         ctk.CTkLabel(inv_frame, text="신화 장난꾸러기만 남기고 나머지 버리기",
                      text_color="gray").pack()
 
@@ -1011,7 +1014,7 @@ class ColorClickerApp(ctk.CTk):
         color_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(color_frame, text="🎨 보존할 색상 (신화 장난꾸러기)",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=5)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=5)
 
         color_input_frame = ctk.CTkFrame(color_frame, fg_color="transparent")
         color_input_frame.pack(fill="x", padx=10, pady=5)
@@ -1044,7 +1047,7 @@ class ColorClickerApp(ctk.CTk):
         grid_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(grid_frame, text="📐 인벤토리 영역 설정",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=5)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=5)
 
         # 영역 좌표
         area_frame = ctk.CTkFrame(grid_frame, fg_color="transparent")
@@ -1079,7 +1082,7 @@ class ColorClickerApp(ctk.CTk):
         desc_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(desc_frame, text="📋 설명 패널 영역 (첫 번째 슬롯 기준)",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=5)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=5)
 
         desc_area_frame = ctk.CTkFrame(desc_frame, fg_color="transparent")
         desc_area_frame.pack(fill="x", padx=10, pady=5)
@@ -1096,14 +1099,14 @@ class ColorClickerApp(ctk.CTk):
                       fg_color="#6c757d", hover_color="#5a6268").pack(side="left", padx=2)
 
         ctk.CTkLabel(desc_frame, text="※ Y축 고정, X축은 슬롯 이동에 따라 자동 계산",
-                     text_color="gray", font=ctk.CTkFont(size=11)).pack(pady=2)
+                     text_color="gray", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(pady=2)
 
         # === 속도 설정 ===
         speed_frame = ctk.CTkFrame(inv_frame)
         speed_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(speed_frame, text="⚡ 속도 설정",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=5)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=5)
 
         # 마우스 이동 속도
         move_frame = ctk.CTkFrame(speed_frame, fg_color="transparent")
@@ -1151,7 +1154,7 @@ class ColorClickerApp(ctk.CTk):
         ctk.CTkOptionMenu(key_inner, variable=self.inv_trigger_modifier, values=["없음", "Ctrl", "Shift", "Alt"],
                           width=70).pack(side="left", padx=5)
         ctk.CTkLabel(key_inner, text="+").pack(side="left")
-        self.inv_key_display = ctk.CTkLabel(key_inner, text="F2", font=ctk.CTkFont(size=14, weight="bold"),
+        self.inv_key_display = ctk.CTkLabel(key_inner, text="F2", font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
                                              text_color="#00ff00")
         self.inv_key_display.pack(side="left", padx=5)
         ctk.CTkButton(key_inner, text="변경", width=60, command=self.change_inv_trigger_key).pack(side="left")
@@ -1164,23 +1167,23 @@ class ColorClickerApp(ctk.CTk):
         self.inv_status_frame.pack(fill="x", padx=10, pady=10)
 
         self.inv_status_label = ctk.CTkLabel(self.inv_status_frame, text="⏸️ 대기 중",
-                                              font=ctk.CTkFont(size=18, weight="bold"))
+                                              font=ctk.CTkFont(family=DEFAULT_FONT, size=18, weight="bold"))
         self.inv_status_label.pack(pady=10)
 
         self.inv_progress_label = ctk.CTkLabel(self.inv_status_frame, text="",
-                                                font=ctk.CTkFont(size=12))
+                                                font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
         self.inv_progress_label.pack(pady=5)
 
         # 버튼
         btn_frame = ctk.CTkFrame(ctrl_frame, fg_color="transparent")
         btn_frame.pack(fill="x", padx=10, pady=10)
 
-        self.inv_start_btn = ctk.CTkButton(btn_frame, text="▶️ 시작", font=ctk.CTkFont(size=16, weight="bold"),
+        self.inv_start_btn = ctk.CTkButton(btn_frame, text="▶️ 시작", font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                                             height=50, command=self.toggle_inv_running,
                                             fg_color="#28a745", hover_color="#218838")
         self.inv_start_btn.pack(side="left", expand=True, fill="x", padx=5)
 
-        ctk.CTkButton(btn_frame, text="🔍 그리드 테스트", font=ctk.CTkFont(size=14), height=50,
+        ctk.CTkButton(btn_frame, text="🔍 그리드 테스트", font=ctk.CTkFont(family=DEFAULT_FONT, size=14), height=50,
                       command=self.test_inv_grid, fg_color="#6c757d", hover_color="#5a6268").pack(side="left", expand=True, fill="x", padx=5)
 
     def create_discard_tab(self):
@@ -1190,7 +1193,7 @@ class ColorClickerApp(ctk.CTk):
 
         # === 설명 ===
         ctk.CTkLabel(discard_frame, text="🗑️ 아이템 전체 버리기",
-                     font=ctk.CTkFont(size=20, weight="bold")).pack(pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=20, weight="bold")).pack(pady=10)
         ctk.CTkLabel(discard_frame, text="인벤토리 모든 아이템 초고속 버리기\n(신화장난꾸러기 탭과 같은 좌표 사용)",
                      text_color="gray").pack()
 
@@ -1199,7 +1202,7 @@ class ColorClickerApp(ctk.CTk):
         speed_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(speed_frame, text="⚡ 버리기 간격",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=5)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=5)
 
         delay_frame = ctk.CTkFrame(speed_frame, fg_color="transparent")
         delay_frame.pack(fill="x", padx=10, pady=5)
@@ -1210,7 +1213,7 @@ class ColorClickerApp(ctk.CTk):
                       command=lambda v: self.discard_delay_label.configure(text=f"{v:.3f}초")).pack(side="right", fill="x", expand=True, padx=10)
 
         ctk.CTkLabel(speed_frame, text="※ 0.001초 = 초당 1000회 시도 (최고속)",
-                     text_color="orange", font=ctk.CTkFont(size=11)).pack(pady=2)
+                     text_color="orange", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(pady=2)
 
         # === 트리거 키 ===
         key_frame = ctk.CTkFrame(discard_frame)
@@ -1222,7 +1225,7 @@ class ColorClickerApp(ctk.CTk):
         ctk.CTkOptionMenu(key_inner, variable=self.discard_trigger_modifier, values=["없음", "Ctrl", "Shift", "Alt"],
                           width=70).pack(side="left", padx=5)
         ctk.CTkLabel(key_inner, text="+").pack(side="left")
-        self.discard_key_display = ctk.CTkLabel(key_inner, text="F3", font=ctk.CTkFont(size=14, weight="bold"),
+        self.discard_key_display = ctk.CTkLabel(key_inner, text="F3", font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
                                                  text_color="#ff6600")
         self.discard_key_display.pack(side="left", padx=5)
         ctk.CTkButton(key_inner, text="변경", width=60, command=self.change_discard_trigger_key).pack(side="left")
@@ -1235,25 +1238,25 @@ class ColorClickerApp(ctk.CTk):
         self.discard_status_frame.pack(fill="x", padx=10, pady=10)
 
         self.discard_status_label = ctk.CTkLabel(self.discard_status_frame, text="⏸️ 대기 중",
-                                                  font=ctk.CTkFont(size=18, weight="bold"))
+                                                  font=ctk.CTkFont(family=DEFAULT_FONT, size=18, weight="bold"))
         self.discard_status_label.pack(pady=10)
 
         self.discard_progress_label = ctk.CTkLabel(self.discard_status_frame, text="",
-                                                    font=ctk.CTkFont(size=12))
+                                                    font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
         self.discard_progress_label.pack(pady=5)
 
         # 버튼
         btn_frame = ctk.CTkFrame(ctrl_frame, fg_color="transparent")
         btn_frame.pack(fill="x", padx=10, pady=10)
 
-        self.discard_start_btn = ctk.CTkButton(btn_frame, text="▶️ 시작", font=ctk.CTkFont(size=16, weight="bold"),
+        self.discard_start_btn = ctk.CTkButton(btn_frame, text="▶️ 시작", font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                                                 height=50, command=self.toggle_discard_running,
                                                 fg_color="#dc3545", hover_color="#c82333")
         self.discard_start_btn.pack(side="left", expand=True, fill="x", padx=5)
 
         # 경고
         ctk.CTkLabel(discard_frame, text="⚠️ 주의: 모든 아이템이 버려집니다!\n즐겨찾기/잠금 아이템은 안전합니다.",
-                     text_color="#ff4444", font=ctk.CTkFont(size=12, weight="bold")).pack(pady=10)
+                     text_color="#ff4444", font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold")).pack(pady=10)
 
     def change_discard_trigger_key(self):
         """아이템 버리기 트리거 키 변경"""
@@ -1264,7 +1267,7 @@ class ColorClickerApp(ctk.CTk):
         dialog.grab_set()
 
         ctk.CTkLabel(dialog, text="새 트리거 키를 누르세요...\n(마우스 4/5번 버튼도 가능)",
-                     font=ctk.CTkFont(size=14)).pack(pady=20)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14)).pack(pady=20)
 
         dialog_active = [True]
 
@@ -1393,7 +1396,7 @@ class ColorClickerApp(ctk.CTk):
 
         # === 설명 ===
         ctk.CTkLabel(sell_frame, text="💰 아이템 전체 팔기",
-                     font=ctk.CTkFont(size=20, weight="bold")).pack(pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=20, weight="bold")).pack(pady=10)
         ctk.CTkLabel(sell_frame, text="인벤토리 모든 아이템 초고속 판매 (우클릭)\n(신화장난꾸러기 탭과 같은 좌표 사용)",
                      text_color="gray").pack()
 
@@ -1402,7 +1405,7 @@ class ColorClickerApp(ctk.CTk):
         speed_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(speed_frame, text="⚡ 팔기 간격",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=5)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=5)
 
         delay_frame = ctk.CTkFrame(speed_frame, fg_color="transparent")
         delay_frame.pack(fill="x", padx=10, pady=5)
@@ -1413,7 +1416,7 @@ class ColorClickerApp(ctk.CTk):
                       command=lambda v: self.sell_delay_label.configure(text=f"{v:.3f}초")).pack(side="right", fill="x", expand=True, padx=10)
 
         ctk.CTkLabel(speed_frame, text="※ 0.001초 = 초당 1000회 시도 (최고속)",
-                     text_color="orange", font=ctk.CTkFont(size=11)).pack(pady=2)
+                     text_color="orange", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(pady=2)
 
         # === 트리거 키 ===
         key_frame = ctk.CTkFrame(sell_frame)
@@ -1425,7 +1428,7 @@ class ColorClickerApp(ctk.CTk):
         ctk.CTkOptionMenu(key_inner, variable=self.sell_trigger_modifier, values=["없음", "Ctrl", "Shift", "Alt"],
                           width=70).pack(side="left", padx=5)
         ctk.CTkLabel(key_inner, text="+").pack(side="left")
-        self.sell_key_display = ctk.CTkLabel(key_inner, text="F4", font=ctk.CTkFont(size=14, weight="bold"),
+        self.sell_key_display = ctk.CTkLabel(key_inner, text="F4", font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
                                              text_color="#ff6600")
         self.sell_key_display.pack(side="left", padx=5)
         ctk.CTkButton(key_inner, text="변경", width=60, command=self.change_sell_trigger_key).pack(side="left")
@@ -1438,25 +1441,25 @@ class ColorClickerApp(ctk.CTk):
         self.sell_status_frame.pack(fill="x", padx=10, pady=10)
 
         self.sell_status_label = ctk.CTkLabel(self.sell_status_frame, text="⏸️ 대기 중",
-                                              font=ctk.CTkFont(size=18, weight="bold"))
+                                              font=ctk.CTkFont(family=DEFAULT_FONT, size=18, weight="bold"))
         self.sell_status_label.pack(pady=10)
 
         self.sell_progress_label = ctk.CTkLabel(self.sell_status_frame, text="",
-                                                font=ctk.CTkFont(size=12))
+                                                font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
         self.sell_progress_label.pack(pady=5)
 
         # 버튼
         btn_frame = ctk.CTkFrame(ctrl_frame, fg_color="transparent")
         btn_frame.pack(fill="x", padx=10, pady=10)
 
-        self.sell_start_btn = ctk.CTkButton(btn_frame, text="▶️ 시작", font=ctk.CTkFont(size=16, weight="bold"),
+        self.sell_start_btn = ctk.CTkButton(btn_frame, text="▶️ 시작", font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                                             height=50, command=self.toggle_sell_running,
                                             fg_color="#28a745", hover_color="#218838")
         self.sell_start_btn.pack(side="left", expand=True, fill="x", padx=5)
 
         # 경고
         ctk.CTkLabel(sell_frame, text="⚠️ 주의: 상인 창을 열고 사용하세요!\n즐겨찾기/잠금 아이템은 안전합니다.",
-                     text_color="#ffaa00", font=ctk.CTkFont(size=12, weight="bold")).pack(pady=10)
+                     text_color="#ffaa00", font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold")).pack(pady=10)
 
     def change_sell_trigger_key(self):
         """아이템 팔기 트리거 키 변경"""
@@ -1467,7 +1470,7 @@ class ColorClickerApp(ctk.CTk):
         dialog.grab_set()
 
         ctk.CTkLabel(dialog, text="새 트리거 키를 누르세요...\n(마우스 4/5번 버튼도 가능)",
-                     font=ctk.CTkFont(size=14)).pack(pady=20)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14)).pack(pady=20)
 
         dialog_active = [True]
 
@@ -1594,7 +1597,7 @@ class ColorClickerApp(ctk.CTk):
 
         # === 설명 ===
         ctk.CTkLabel(consume_frame, text="🍖 아이템 먹기",
-                     font=ctk.CTkFont(size=20, weight="bold")).pack(pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=20, weight="bold")).pack(pady=10)
         ctk.CTkLabel(consume_frame, text="현재 마우스 위치에서 선택한 입력 초고속 반복\n(마우스를 아이템에 가져다 놓고 사용)",
                      text_color="gray").pack()
 
@@ -1603,7 +1606,7 @@ class ColorClickerApp(ctk.CTk):
         input_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(input_frame, text="🖱️ 입력 방식",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=5)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=5)
 
         input_inner = ctk.CTkFrame(input_frame, fg_color="transparent")
         input_inner.pack(fill="x", padx=10, pady=5)
@@ -1620,7 +1623,7 @@ class ColorClickerApp(ctk.CTk):
         speed_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(speed_frame, text="⚡ 먹기 간격",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=5)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=5)
 
         delay_frame = ctk.CTkFrame(speed_frame, fg_color="transparent")
         delay_frame.pack(fill="x", padx=10, pady=5)
@@ -1631,7 +1634,7 @@ class ColorClickerApp(ctk.CTk):
                       command=lambda v: self.consume_delay_label.configure(text=f"{v:.3f}초")).pack(side="right", fill="x", expand=True, padx=10)
 
         ctk.CTkLabel(speed_frame, text="※ 0.001초 = 초당 1000회 시도 (최고속)",
-                     text_color="orange", font=ctk.CTkFont(size=11)).pack(pady=2)
+                     text_color="orange", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(pady=2)
 
         # === 트리거 키 ===
         key_frame = ctk.CTkFrame(consume_frame)
@@ -1643,7 +1646,7 @@ class ColorClickerApp(ctk.CTk):
         ctk.CTkOptionMenu(key_inner, variable=self.consume_trigger_modifier, values=["없음", "Ctrl", "Shift", "Alt"],
                           width=70).pack(side="left", padx=5)
         ctk.CTkLabel(key_inner, text="+").pack(side="left")
-        self.consume_key_display = ctk.CTkLabel(key_inner, text="F5", font=ctk.CTkFont(size=14, weight="bold"),
+        self.consume_key_display = ctk.CTkLabel(key_inner, text="F5", font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
                                                 text_color="#ff6600")
         self.consume_key_display.pack(side="left", padx=5)
         ctk.CTkButton(key_inner, text="변경", width=60, command=self.change_consume_trigger_key).pack(side="left")
@@ -1656,25 +1659,25 @@ class ColorClickerApp(ctk.CTk):
         self.consume_status_frame.pack(fill="x", padx=10, pady=10)
 
         self.consume_status_label = ctk.CTkLabel(self.consume_status_frame, text="⏸️ 대기 중",
-                                                 font=ctk.CTkFont(size=18, weight="bold"))
+                                                 font=ctk.CTkFont(family=DEFAULT_FONT, size=18, weight="bold"))
         self.consume_status_label.pack(pady=10)
 
         self.consume_progress_label = ctk.CTkLabel(self.consume_status_frame, text="",
-                                                   font=ctk.CTkFont(size=12))
+                                                   font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
         self.consume_progress_label.pack(pady=5)
 
         # 버튼
         btn_frame = ctk.CTkFrame(ctrl_frame, fg_color="transparent")
         btn_frame.pack(fill="x", padx=10, pady=10)
 
-        self.consume_start_btn = ctk.CTkButton(btn_frame, text="▶️ 시작", font=ctk.CTkFont(size=16, weight="bold"),
+        self.consume_start_btn = ctk.CTkButton(btn_frame, text="▶️ 시작", font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                                                height=50, command=self.toggle_consume_running,
                                                fg_color="#17a2b8", hover_color="#138496")
         self.consume_start_btn.pack(side="left", expand=True, fill="x", padx=5)
 
         # 안내
         ctk.CTkLabel(consume_frame, text="💡 마우스를 아이템 위에 놓고 트리거 키를 누르세요",
-                     text_color="#00aaff", font=ctk.CTkFont(size=12, weight="bold")).pack(pady=10)
+                     text_color="#00aaff", font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold")).pack(pady=10)
 
     def change_consume_trigger_key(self):
         """아이템 먹기 트리거 키 변경"""
@@ -1685,7 +1688,7 @@ class ColorClickerApp(ctk.CTk):
         dialog.grab_set()
 
         ctk.CTkLabel(dialog, text="새 트리거 키를 누르세요...\n(마우스 4/5번 버튼도 가능)",
-                     font=ctk.CTkFont(size=14)).pack(pady=20)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14)).pack(pady=20)
 
         dialog_active = [True]
 
@@ -1735,11 +1738,11 @@ class ColorClickerApp(ctk.CTk):
 
         # === 헤더 ===
         ctk.CTkLabel(home_frame, text="🏠 대시보드",
-                     font=ctk.CTkFont(size=20, weight="bold")).pack(pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=20, weight="bold")).pack(pady=10)
         ctk.CTkLabel(home_frame, text="모든 기능을 한눈에 관리",
                      text_color="gray").pack()
         ctk.CTkLabel(home_frame, text=f"v{VERSION}",
-                     font=ctk.CTkFont(size=12),
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=12),
                      text_color="#00aaff").pack(pady=(5, 0))
 
         # === 전체 시작/중지 버튼 (큰 버튼) ===
@@ -1747,19 +1750,19 @@ class ColorClickerApp(ctk.CTk):
         all_ctrl_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(all_ctrl_frame, text="🎮 전체 제어",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=10)
 
         all_btn_frame = ctk.CTkFrame(all_ctrl_frame, fg_color="transparent")
         all_btn_frame.pack(fill="x", padx=10, pady=10)
 
         self.all_start_btn = ctk.CTkButton(all_btn_frame, text="▶️ 전체 시작",
-                                            font=ctk.CTkFont(size=16, weight="bold"),
+                                            font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                                             height=50, command=self.start_all_functions,
                                             fg_color="#28a745", hover_color="#218838")
         self.all_start_btn.pack(side="left", expand=True, fill="x", padx=5)
 
         self.all_stop_btn = ctk.CTkButton(all_btn_frame, text="⏹️ 전체 중지",
-                                           font=ctk.CTkFont(size=16, weight="bold"),
+                                           font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                                            height=50, command=self.stop_all_functions,
                                            fg_color="#dc3545", hover_color="#c82333")
         self.all_stop_btn.pack(side="left", expand=True, fill="x", padx=5)
@@ -1769,7 +1772,7 @@ class ColorClickerApp(ctk.CTk):
         func_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(func_frame, text="⚡ 기능 상태",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=10)
 
         # 각 기능 정보
         functions = [
@@ -1791,17 +1794,17 @@ class ColorClickerApp(ctk.CTk):
 
             # 기능 이름
             ctk.CTkLabel(row, text=name, width=100, anchor="w",
-                         font=ctk.CTkFont(size=13)).pack(side="left")
+                         font=ctk.CTkFont(family=DEFAULT_FONT, size=13)).pack(side="left")
 
             # 핫키 표시
             key_label = ctk.CTkLabel(row, text="", width=100, anchor="center",
-                                     text_color="#ff9900", font=ctk.CTkFont(size=12, weight="bold"))
+                                     text_color="#ff9900", font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold"))
             key_label.pack(side="left", padx=5)
             self.home_key_labels[running_attr] = (key_label, key_var, mod_var)
 
             # 상태 표시
             status_label = ctk.CTkLabel(row, text="OFF", width=40, anchor="center",
-                                        text_color="#666666", font=ctk.CTkFont(size=12))
+                                        text_color="#666666", font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
             status_label.pack(side="left", padx=5)
             self.home_status_labels[running_attr] = status_label
 
@@ -1818,9 +1821,9 @@ class ColorClickerApp(ctk.CTk):
         sound_inner.pack(fill="x", padx=10, pady=10)
 
         ctk.CTkLabel(sound_inner, text="🔔 소리 알림",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(side="left")
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(side="left")
         ctk.CTkLabel(sound_inner, text="(기능 ON/OFF 시 효과음)",
-                     text_color="gray", font=ctk.CTkFont(size=11)).pack(side="left", padx=10)
+                     text_color="gray", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left", padx=10)
         ctk.CTkSwitch(sound_inner, text="", variable=self.sound_enabled, width=40).pack(side="right", padx=10)
 
         # === 오버레이 컨트롤 ===
@@ -1828,7 +1831,7 @@ class ColorClickerApp(ctk.CTk):
         overlay_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(overlay_frame, text="🖥️ 오버레이",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=10)
 
         overlay_btn_frame = ctk.CTkFrame(overlay_frame, fg_color="transparent")
         overlay_btn_frame.pack(fill="x", padx=10, pady=10)
@@ -1844,13 +1847,13 @@ class ColorClickerApp(ctk.CTk):
         self.overlay_repos_btn.pack(side="left", expand=True, fill="x", padx=5)
 
         ctk.CTkLabel(overlay_frame, text="재배치 모드에서 드래그 후 Enter로 고정",
-                     text_color="gray", font=ctk.CTkFont(size=11)).pack(pady=5)
+                     text_color="gray", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(pady=5)
 
         # 투명도 조절
         alpha_frame = ctk.CTkFrame(overlay_frame, fg_color="transparent")
         alpha_frame.pack(fill="x", padx=10, pady=5)
-        ctk.CTkLabel(alpha_frame, text="투명도:", font=ctk.CTkFont(size=12)).pack(side="left")
-        self.alpha_label = ctk.CTkLabel(alpha_frame, text="85%", width=50, font=ctk.CTkFont(size=12))
+        ctk.CTkLabel(alpha_frame, text="투명도:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
+        self.alpha_label = ctk.CTkLabel(alpha_frame, text="85%", width=50, font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
         self.alpha_label.pack(side="right")
         ctk.CTkSlider(alpha_frame, from_=0.3, to=1.0, variable=self.overlay_alpha,
                       command=self.update_overlay_alpha).pack(side="right", fill="x", expand=True, padx=10)
@@ -1860,7 +1863,7 @@ class ColorClickerApp(ctk.CTk):
         save_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(save_frame, text="💾 설정 관리",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=10)
 
         # 기본 저장/불러오기
         save_btn_frame = ctk.CTkFrame(save_frame, fg_color="transparent")
@@ -1883,83 +1886,83 @@ class ColorClickerApp(ctk.CTk):
                       fg_color="#6f42c1", hover_color="#5a32a3").pack(side="left", expand=True, fill="x", padx=5)
 
         ctk.CTkLabel(save_frame, text="💡 내보내기로 설정파일 저장 → 클랜원에게 공유!",
-                     text_color="#00aaff", font=ctk.CTkFont(size=11)).pack(pady=5)
+                     text_color="#00aaff", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(pady=5)
 
         # === 긴급 정지 핫키 ===
         emergency_frame = ctk.CTkFrame(home_frame)
         emergency_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(emergency_frame, text="🛑 긴급 정지",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=10)
 
         emergency_inner = ctk.CTkFrame(emergency_frame, fg_color="transparent")
         emergency_inner.pack(fill="x", padx=10, pady=5)
 
         ctk.CTkLabel(emergency_inner, text="긴급 정지 키:",
-                     font=ctk.CTkFont(size=12)).pack(side="left")
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
         self.emergency_key_display = ctk.CTkLabel(emergency_inner, text="F12",
-                                                   font=ctk.CTkFont(size=14, weight="bold"),
+                                                   font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
                                                    text_color="#ff4444")
         self.emergency_key_display.pack(side="left", padx=10)
         ctk.CTkButton(emergency_inner, text="변경", width=60,
                       command=self.change_emergency_key).pack(side="left")
 
         ctk.CTkLabel(emergency_frame, text="이 키를 누르면 모든 기능이 즉시 중지됩니다",
-                     text_color="gray", font=ctk.CTkFont(size=11)).pack(pady=5)
+                     text_color="gray", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(pady=5)
 
         # === 자동 시작 설정 ===
         auto_frame = ctk.CTkFrame(home_frame)
         auto_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(auto_frame, text="🚀 자동 시작",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=10)
 
         ctk.CTkLabel(auto_frame, text="프로그램 실행 시 자동으로 켜질 기능 선택",
-                     text_color="gray", font=ctk.CTkFont(size=11)).pack()
+                     text_color="gray", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack()
 
         auto_checks_frame = ctk.CTkFrame(auto_frame, fg_color="transparent")
         auto_checks_frame.pack(fill="x", padx=10, pady=10)
 
         ctk.CTkCheckBox(auto_checks_frame, text="벨리알", variable=self.auto_start_belial,
-                        font=ctk.CTkFont(size=12)).pack(side="left", padx=10)
+                        font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left", padx=10)
         ctk.CTkCheckBox(auto_checks_frame, text="꾸러기", variable=self.auto_start_inv,
-                        font=ctk.CTkFont(size=12)).pack(side="left", padx=10)
+                        font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left", padx=10)
         ctk.CTkCheckBox(auto_checks_frame, text="버리기", variable=self.auto_start_discard,
-                        font=ctk.CTkFont(size=12)).pack(side="left", padx=10)
+                        font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left", padx=10)
 
         auto_checks_frame2 = ctk.CTkFrame(auto_frame, fg_color="transparent")
         auto_checks_frame2.pack(fill="x", padx=10, pady=5)
 
         ctk.CTkCheckBox(auto_checks_frame2, text="팔기", variable=self.auto_start_sell,
-                        font=ctk.CTkFont(size=12)).pack(side="left", padx=10)
+                        font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left", padx=10)
         ctk.CTkCheckBox(auto_checks_frame2, text="먹기", variable=self.auto_start_consume,
-                        font=ctk.CTkFont(size=12)).pack(side="left", padx=10)
+                        font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left", padx=10)
 
         ctk.CTkLabel(auto_frame, text="💡 저장 후 다음 실행부터 적용됩니다",
-                     text_color="#00aaff", font=ctk.CTkFont(size=11)).pack(pady=5)
+                     text_color="#00aaff", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(pady=5)
 
         # === 월드 보스 타이머 ===
         boss_frame = ctk.CTkFrame(home_frame)
         boss_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(boss_frame, text="🌍 다음 월드 보스",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=10)
 
         boss_info_frame = ctk.CTkFrame(boss_frame, fg_color="transparent")
         boss_info_frame.pack(fill="x", padx=10, pady=5)
 
         self.home_boss_name = ctk.CTkLabel(boss_info_frame, text="로딩 중...",
-                                            font=ctk.CTkFont(size=16, weight="bold"),
+                                            font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                                             text_color="#ff9900")
         self.home_boss_name.pack()
 
         self.home_boss_zone = ctk.CTkLabel(boss_info_frame, text="",
-                                            font=ctk.CTkFont(size=12),
+                                            font=ctk.CTkFont(family=DEFAULT_FONT, size=12),
                                             text_color="gray")
         self.home_boss_zone.pack()
 
         self.home_boss_time = ctk.CTkLabel(boss_info_frame, text="",
-                                            font=ctk.CTkFont(size=14),
+                                            font=ctk.CTkFont(family=DEFAULT_FONT, size=14),
                                             text_color="#00ff00")
         self.home_boss_time.pack(pady=5)
 
@@ -1971,7 +1974,7 @@ class ColorClickerApp(ctk.CTk):
         bg_color_frame = ctk.CTkFrame(overlay_frame, fg_color="transparent")
         bg_color_frame.pack(fill="x", padx=10, pady=5)
 
-        ctk.CTkLabel(bg_color_frame, text="배경색:", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkLabel(bg_color_frame, text="배경색:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
         self.bg_color_preview = ctk.CTkLabel(bg_color_frame, text="  ", width=30,
                                               fg_color=self.overlay_bg_color.get())
         self.bg_color_preview.pack(side="left", padx=5)
@@ -2011,7 +2014,7 @@ class ColorClickerApp(ctk.CTk):
         dialog.grab_set()
 
         ctk.CTkLabel(dialog, text="새 긴급 정지 키를 누르세요...",
-                     font=ctk.CTkFont(size=14)).pack(pady=20)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14)).pack(pady=20)
 
         dialog_active = [True]
 
@@ -2335,16 +2338,16 @@ class ColorClickerApp(ctk.CTk):
 
         # === 헤더 ===
         ctk.CTkLabel(help_frame, text="📖 사용법 안내",
-                     font=ctk.CTkFont(size=22, weight="bold")).pack(pady=15)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=22, weight="bold")).pack(pady=15)
         ctk.CTkLabel(help_frame, text="각 기능별 간단한 설명입니다",
-                     text_color="gray", font=ctk.CTkFont(size=14)).pack()
+                     text_color="gray", font=ctk.CTkFont(family=DEFAULT_FONT, size=14)).pack()
 
         # === 기본 사용법 ===
         basic_frame = ctk.CTkFrame(help_frame)
         basic_frame.pack(fill="x", pady=15, padx=10)
 
         ctk.CTkLabel(basic_frame, text="🎯 기본 사용법",
-                     font=ctk.CTkFont(size=18, weight="bold")).pack(pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=18, weight="bold")).pack(pady=10)
 
         basic_text = """
 1. 각 탭에서 필요한 설정을 합니다
@@ -2356,14 +2359,14 @@ class ColorClickerApp(ctk.CTk):
    다시 누르면 꺼집니다!
 """
         ctk.CTkLabel(basic_frame, text=basic_text, justify="left",
-                     font=ctk.CTkFont(size=14)).pack(padx=15, pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14)).pack(padx=15, pady=10)
 
         # === 벨리알 탭 설명 ===
         belial_frame = ctk.CTkFrame(help_frame)
         belial_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(belial_frame, text="👁️ 벨리알 (아이템 줍기)",
-                     font=ctk.CTkFont(size=16, weight="bold"),
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                      text_color="#ffcc00").pack(pady=10)
 
         belial_text = """
@@ -2377,14 +2380,14 @@ class ColorClickerApp(ctk.CTk):
 ⚠️ 제외 색상: 클릭하면 안 되는 색상 등록
 """
         ctk.CTkLabel(belial_frame, text=belial_text, justify="left",
-                     font=ctk.CTkFont(size=13)).pack(padx=15, pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=13)).pack(padx=15, pady=10)
 
         # === 신화장난꾸러기 설명 ===
         inv_frame = ctk.CTkFrame(help_frame)
         inv_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(inv_frame, text="✨ 신화장난꾸러기 (인벤 정리)",
-                     font=ctk.CTkFont(size=16, weight="bold"),
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                      text_color="#ff6b00").pack(pady=10)
 
         inv_text = """
@@ -2398,14 +2401,14 @@ class ColorClickerApp(ctk.CTk):
 💡 스페이스바로 즐겨찾기 등록됩니다
 """
         ctk.CTkLabel(inv_frame, text=inv_text, justify="left",
-                     font=ctk.CTkFont(size=13)).pack(padx=15, pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=13)).pack(padx=15, pady=10)
 
         # === 버리기/팔기/먹기 설명 ===
         other_frame = ctk.CTkFrame(help_frame)
         other_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(other_frame, text="🔧 기타 기능",
-                     font=ctk.CTkFont(size=16, weight="bold"),
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                      text_color="#00aaff").pack(pady=10)
 
         other_text = """
@@ -2417,14 +2420,14 @@ class ColorClickerApp(ctk.CTk):
    다시 핫키를 누르면 멈춤
 """
         ctk.CTkLabel(other_frame, text=other_text, justify="left",
-                     font=ctk.CTkFont(size=13)).pack(padx=15, pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=13)).pack(padx=15, pady=10)
 
         # === 설정 공유 설명 ===
         share_frame = ctk.CTkFrame(help_frame)
         share_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(share_frame, text="📤 클랜원에게 설정 공유하기",
-                     font=ctk.CTkFont(size=16, weight="bold"),
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                      text_color="#fd7e14").pack(pady=10)
 
         share_text = """
@@ -2435,14 +2438,14 @@ class ColorClickerApp(ctk.CTk):
 💡 한 번 설정하면 모두가 같은 설정 사용!
 """
         ctk.CTkLabel(share_frame, text=share_text, justify="left",
-                     font=ctk.CTkFont(size=13)).pack(padx=15, pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=13)).pack(padx=15, pady=10)
 
         # === 문제 해결 ===
         trouble_frame = ctk.CTkFrame(help_frame)
         trouble_frame.pack(fill="x", pady=10, padx=10)
 
         ctk.CTkLabel(trouble_frame, text="❓ 문제 해결",
-                     font=ctk.CTkFont(size=16, weight="bold"),
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                      text_color="#dc3545").pack(pady=10)
 
         trouble_text = """
@@ -2459,7 +2462,7 @@ class ColorClickerApp(ctk.CTk):
    → 오버레이를 끄거나 검색 영역을 줄여보세요
 """
         ctk.CTkLabel(trouble_frame, text=trouble_text, justify="left",
-                     font=ctk.CTkFont(size=13)).pack(padx=15, pady=10)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=13)).pack(padx=15, pady=10)
 
     def create_patch_notes_tab(self):
         """패치노트 탭 UI 생성"""
@@ -2468,13 +2471,13 @@ class ColorClickerApp(ctk.CTk):
 
         # === 헤더 ===
         ctk.CTkLabel(patch_frame, text="📋 패치노트",
-                     font=ctk.CTkFont(size=22, weight="bold")).pack(pady=15)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=22, weight="bold")).pack(pady=15)
         ctk.CTkLabel(patch_frame, text="버전별 업데이트 내역",
-                     text_color="gray", font=ctk.CTkFont(size=14)).pack()
+                     text_color="gray", font=ctk.CTkFont(family=DEFAULT_FONT, size=14)).pack()
 
         # 현재 버전 표시
         ctk.CTkLabel(patch_frame, text=f"현재 버전: v{VERSION}",
-                     font=ctk.CTkFont(size=16, weight="bold"),
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                      text_color="#00aaff").pack(pady=(15, 10))
 
         # 패치노트 컨테이너
@@ -2484,7 +2487,7 @@ class ColorClickerApp(ctk.CTk):
         # 로딩 표시
         self.patch_loading_label = ctk.CTkLabel(self.patch_notes_container,
                                                  text="패치노트 불러오는 중...",
-                                                 font=ctk.CTkFont(size=14))
+                                                 font=ctk.CTkFont(family=DEFAULT_FONT, size=14))
         self.patch_loading_label.pack(pady=20)
 
         # 새로고침 버튼
@@ -2520,7 +2523,7 @@ class ColorClickerApp(ctk.CTk):
         if not releases:
             ctk.CTkLabel(self.patch_notes_container,
                         text="릴리즈 정보가 없습니다.",
-                        font=ctk.CTkFont(size=14)).pack(pady=20)
+                        font=ctk.CTkFont(family=DEFAULT_FONT, size=14)).pack(pady=20)
             return
 
         # 각 릴리즈 표시
@@ -2539,22 +2542,22 @@ class ColorClickerApp(ctk.CTk):
             header_frame.pack(fill="x", padx=5, pady=5)
 
             ctk.CTkLabel(header_frame, text=f"  {version}  ",
-                        font=ctk.CTkFont(size=16, weight="bold"),
+                        font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                         text_color="white").pack(side="left", padx=10, pady=8)
 
             ctk.CTkLabel(header_frame, text=published,
-                        font=ctk.CTkFont(size=12),
+                        font=ctk.CTkFont(family=DEFAULT_FONT, size=12),
                         text_color="#aaaaaa").pack(side="right", padx=10, pady=8)
 
             # 제목
             if title and title != version:
                 ctk.CTkLabel(release_frame, text=title,
-                            font=ctk.CTkFont(size=14, weight="bold"),
+                            font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
                             text_color="#ffaa00").pack(anchor="w", padx=15, pady=(10, 5))
 
             # 내용
             ctk.CTkLabel(release_frame, text=body,
-                        font=ctk.CTkFont(size=13),
+                        font=ctk.CTkFont(family=DEFAULT_FONT, size=13),
                         justify="left", wraplength=450).pack(anchor="w", padx=15, pady=(5, 15))
 
     def display_patch_notes_error(self, error):
@@ -2564,7 +2567,7 @@ class ColorClickerApp(ctk.CTk):
 
         ctk.CTkLabel(self.patch_notes_container,
                     text=f"패치노트를 불러올 수 없습니다.\n\n{error}",
-                    font=ctk.CTkFont(size=14),
+                    font=ctk.CTkFont(family=DEFAULT_FONT, size=14),
                     text_color="#ff6666").pack(pady=20)
 
     def update_home_status(self):
@@ -2890,7 +2893,7 @@ class ColorClickerApp(ctk.CTk):
         dialog.grab_set()
 
         ctk.CTkLabel(dialog, text="새 트리거 키를 누르세요...\n(마우스 4/5번 버튼도 가능)",
-                     font=ctk.CTkFont(size=14)).pack(pady=20)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14)).pack(pady=20)
 
         dialog_active = [True]
 
@@ -3668,7 +3671,7 @@ class ColorClickerApp(ctk.CTk):
         dialog.grab_set()
 
         ctk.CTkLabel(dialog, text="새 트리거 키를 누르세요...\n(마우스 4/5번 버튼도 가능)",
-                     font=ctk.CTkFont(size=14)).pack(pady=20)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14)).pack(pady=20)
 
         dialog_active = [True]
 
@@ -4406,18 +4409,18 @@ class ColorClickerApp(ctk.CTk):
         header = ctk.CTkFrame(main_frame, fg_color="#1a5f2a", corner_radius=0)
         header.pack(fill="x")
         ctk.CTkLabel(header, text="새 버전이 있습니다!",
-                     font=ctk.CTkFont(size=18, weight="bold"),
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=18, weight="bold"),
                      text_color="white").pack(pady=15)
 
         # 버전 정보
         ctk.CTkLabel(main_frame,
                      text=f"v{VERSION}  →  v{latest_version}",
-                     font=ctk.CTkFont(size=16, weight="bold"),
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"),
                      text_color="#00aaff").pack(pady=(15, 5))
 
         # 릴리즈 제목
         ctk.CTkLabel(main_frame, text=release_title,
-                     font=ctk.CTkFont(size=14, weight="bold"),
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
                      text_color="#ffaa00").pack(pady=(10, 5))
 
         # 변경 사항 (고정 높이)
@@ -4425,7 +4428,7 @@ class ColorClickerApp(ctk.CTk):
         notes_frame.pack(fill="x", padx=20, pady=10)
         notes_frame.pack_propagate(False)
 
-        notes_text = ctk.CTkTextbox(notes_frame, font=ctk.CTkFont(size=20),
+        notes_text = ctk.CTkTextbox(notes_frame, font=ctk.CTkFont(family=DEFAULT_FONT, size=20),
                                      fg_color="#2b2b2b", wrap="word")
         notes_text.pack(fill="both", expand=True, padx=5, pady=5)
         notes_text.insert("1.0", release_body)
@@ -4445,11 +4448,11 @@ class ColorClickerApp(ctk.CTk):
 
         ctk.CTkButton(btn_frame, text="업데이트", width=150, height=40,
                       fg_color="#1a5f2a", hover_color="#2a7f3a",
-                      font=ctk.CTkFont(size=14, weight="bold"),
+                      font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
                       command=on_update).pack(side="left", expand=True, padx=10)
         ctk.CTkButton(btn_frame, text="나중에", width=150, height=40,
                       fg_color="#555555", hover_color="#666666",
-                      font=ctk.CTkFont(size=14),
+                      font=ctk.CTkFont(family=DEFAULT_FONT, size=14),
                       command=on_cancel).pack(side="right", expand=True, padx=10)
 
         dialog.wait_window()
@@ -4579,7 +4582,7 @@ del /f /q "{new_exe}" 2>nul
         self.update_dialog.grab_set()
 
         ctk.CTkLabel(self.update_dialog, text="업데이트 다운로드 중...",
-                     font=ctk.CTkFont(size=14)).pack(pady=20)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14)).pack(pady=20)
         ctk.CTkLabel(self.update_dialog, text="잠시만 기다려주세요",
                      text_color="gray").pack()
 
