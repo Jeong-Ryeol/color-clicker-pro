@@ -61,11 +61,13 @@ class ColorClickerApp(ctk.CTk):
         self.colors = []
         self.exclude_colors = []
         self.tolerance = ctk.IntVar(value=10)
+        self.color_tolerance = ctk.IntVar(value=10)  # 색상 허용 범위
         self.exclude_range = ctk.IntVar(value=30)
         self.trigger_key = ctk.StringVar(value="f1")
         self.trigger_modifier = ctk.StringVar(value="없음")  # 없음, Ctrl, Shift, Alt
         self.click_type = ctk.StringVar(value="right")
         self.click_delay = ctk.DoubleVar(value=0.1)
+        self.use_full_screen = ctk.BooleanVar(value=False)  # 전체 화면 모드
         self.is_running = False
         self.detection_active = False
         self.picker_mode = False
