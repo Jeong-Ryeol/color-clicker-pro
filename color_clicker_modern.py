@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.6.1"
+VERSION = "1.6.2"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -334,7 +334,7 @@ class ColorClickerApp(ctk.CTk):
 
         # 컨텐츠 영역
         content = ctk.CTkFrame(box, fg_color="transparent")
-        content.pack(fill="x", padx=10, pady=(0, 10))
+        content.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
         return content
 
@@ -1745,22 +1745,25 @@ class ColorClickerApp(ctk.CTk):
         ctk.CTkLabel(consume_frame, text="현재 마우스 위치에서 선택한 입력 초고속 반복\n(마우스를 아이템에 가져다 놓고 사용)",
                      text_color="gray").pack()
 
-        # === 입력 방식 선택 ===
+        # === 누를 키 설정 ===
         input_frame = ctk.CTkFrame(consume_frame)
         input_frame.pack(fill="x", pady=10, padx=10)
 
-        ctk.CTkLabel(input_frame, text="🖱️ 입력 방식",
+        ctk.CTkLabel(input_frame, text="🖱️ 누를 키",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold")).pack(pady=5)
 
         input_inner = ctk.CTkFrame(input_frame, fg_color="transparent")
         input_inner.pack(fill="x", padx=10, pady=5)
 
-        ctk.CTkRadioButton(input_inner, text="F키", variable=self.consume_input_type,
-                           value="F키").pack(side="left", padx=10)
-        ctk.CTkRadioButton(input_inner, text="우클릭", variable=self.consume_input_type,
-                           value="우클릭").pack(side="left", padx=10)
-        ctk.CTkRadioButton(input_inner, text="왼클릭", variable=self.consume_input_type,
-                           value="왼클릭").pack(side="left", padx=10)
+        ctk.CTkLabel(input_inner, text="현재:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
+        self.consume_action_display2 = ctk.CTkLabel(input_inner, text=self.consume_action_key.get().upper(),
+                                                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14, weight="bold"),
+                                                     text_color="#ffaa00")
+        self.consume_action_display2.pack(side="left", padx=10)
+        ctk.CTkButton(input_inner, text="변경", width=60, height=28,
+                      command=self.change_consume_action_key).pack(side="left", padx=5)
+        ctk.CTkLabel(input_inner, text="(키보드, 마우스 클릭 가능)", text_color="#888888",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=10)).pack(side="left", padx=10)
 
         # === 속도 설정 ===
         speed_frame = ctk.CTkFrame(consume_frame)
@@ -1891,12 +1894,20 @@ class ColorClickerApp(ctk.CTk):
 
         dialog_active = [True]
 
+        def update_action_key(key_name):
+            """누를 키 업데이트 (모든 디스플레이)"""
+            self.consume_action_key.set(key_name)
+            display_text = key_name.upper()
+            if hasattr(self, 'consume_action_display'):
+                self.consume_action_display.configure(text=display_text)
+            if hasattr(self, 'consume_action_display2'):
+                self.consume_action_display2.configure(text=display_text)
+
         def on_key(event):
             if dialog_active[0]:
                 dialog_active[0] = False
                 key_name = event.name.upper()
-                self.consume_action_key.set(key_name)
-                self.consume_action_display.configure(text=key_name)
+                self.after(0, lambda: update_action_key(key_name))
                 dialog.destroy()
 
         keyboard.on_press(on_key, suppress=False)
@@ -1915,29 +1926,25 @@ class ColorClickerApp(ctk.CTk):
                 # 좌클릭
                 if win32api.GetAsyncKeyState(0x01) & 0x8000:
                     dialog_active[0] = False
-                    self.after(0, lambda: self.consume_action_key.set("좌클릭"))
-                    self.after(0, lambda: self.consume_action_display.configure(text="좌클릭"))
+                    self.after(0, lambda: update_action_key("좌클릭"))
                     self.after(0, dialog.destroy)
                     break
                 # 우클릭
                 if win32api.GetAsyncKeyState(0x02) & 0x8000:
                     dialog_active[0] = False
-                    self.after(0, lambda: self.consume_action_key.set("우클릭"))
-                    self.after(0, lambda: self.consume_action_display.configure(text="우클릭"))
+                    self.after(0, lambda: update_action_key("우클릭"))
                     self.after(0, dialog.destroy)
                     break
                 # Mouse4
                 if win32api.GetAsyncKeyState(0x05) & 0x8000:
                     dialog_active[0] = False
-                    self.after(0, lambda: self.consume_action_key.set("mouse4"))
-                    self.after(0, lambda: self.consume_action_display.configure(text="MOUSE4"))
+                    self.after(0, lambda: update_action_key("mouse4"))
                     self.after(0, dialog.destroy)
                     break
                 # Mouse5
                 if win32api.GetAsyncKeyState(0x06) & 0x8000:
                     dialog_active[0] = False
-                    self.after(0, lambda: self.consume_action_key.set("mouse5"))
-                    self.after(0, lambda: self.consume_action_display.configure(text="MOUSE5"))
+                    self.after(0, lambda: update_action_key("mouse5"))
                     self.after(0, dialog.destroy)
                     break
                 time.sleep(0.01)
@@ -3144,22 +3151,31 @@ class ColorClickerApp(ctk.CTk):
         def consume_loop():
             import time
             delay = self.consume_delay.get()
-            input_type = self.consume_input_type.get()
+            action_key = self.consume_action_key.get()
 
-            self.after(0, lambda: self.consume_status_label.configure(text=f"🍖 먹는 중... ({input_type})"))
+            self.after(0, lambda: self.consume_status_label.configure(text=f"🍖 먹는 중... ({action_key})"))
 
             consumed = 0
             while self.consume_active:
-                if input_type == "F키":
-                    # F 키 입력 (0x46 = F)
-                    win32api.keybd_event(0x46, 0, 0, 0)
-                    win32api.keybd_event(0x46, 0, win32con.KEYEVENTF_KEYUP, 0)
-                elif input_type == "우클릭":
-                    win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0)
-                    win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0)
-                elif input_type == "왼클릭":
+                # 마우스 클릭
+                if action_key == "좌클릭" or action_key == "왼클릭":
                     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
                     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+                elif action_key == "우클릭":
+                    win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0)
+                    win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0)
+                elif action_key.lower() == "mouse4":
+                    win32api.mouse_event(win32con.MOUSEEVENTF_XDOWN, 0, 0, win32con.XBUTTON1, 0)
+                    win32api.mouse_event(win32con.MOUSEEVENTF_XUP, 0, 0, win32con.XBUTTON1, 0)
+                elif action_key.lower() == "mouse5":
+                    win32api.mouse_event(win32con.MOUSEEVENTF_XDOWN, 0, 0, win32con.XBUTTON2, 0)
+                    win32api.mouse_event(win32con.MOUSEEVENTF_XUP, 0, 0, win32con.XBUTTON2, 0)
+                else:
+                    # 키보드 키
+                    try:
+                        keyboard.press_and_release(action_key.lower())
+                    except:
+                        pass
 
                 consumed += 1
 
@@ -3840,9 +3856,12 @@ class ColorClickerApp(ctk.CTk):
         # 먹기
         if hasattr(self, 'consume_key_display'):
             self.consume_key_display.configure(text=self.consume_trigger_key.get().upper())
-        # 먹기 - 누를 키
+        # 먹기 - 누를 키 (둘 다)
+        action_text = self.consume_action_key.get().upper()
         if hasattr(self, 'consume_action_display'):
-            self.consume_action_display.configure(text=self.consume_action_key.get().upper())
+            self.consume_action_display.configure(text=action_text)
+        if hasattr(self, 'consume_action_display2'):
+            self.consume_action_display2.configure(text=action_text)
 
     def update_color_list(self):
         self.color_listbox.delete(0, tk.END)
@@ -4494,7 +4513,7 @@ class ColorClickerApp(ctk.CTk):
                 'trigger_key': self.consume_trigger_key.get(),
                 'trigger_modifier': self.consume_trigger_modifier.get(),
                 'delay': self.consume_delay.get(),
-                'input_type': self.consume_input_type.get()
+                'action_key': self.consume_action_key.get()
             },
             # 오버레이 설정
             'overlay': {
@@ -4608,9 +4627,17 @@ class ColorClickerApp(ctk.CTk):
                 self.consume_trigger_key.set(consume.get('trigger_key', 'mouse5'))
                 self.consume_trigger_modifier.set(consume.get('trigger_modifier', '없음'))
                 self.consume_delay.set(consume.get('delay', 0.01))
-                self.consume_input_type.set(consume.get('input_type', '우클릭'))
+                # action_key 또는 구버전 input_type에서 로드
+                action_key = consume.get('action_key', consume.get('input_type', '우클릭'))
+                self.consume_action_key.set(action_key)
                 self.consume_key_display.configure(text=self.consume_trigger_key.get().upper())
                 self.consume_delay_label.configure(text=f"{self.consume_delay.get():.3f}초")
+                # 누를 키 표시 업데이트 (둘 다)
+                display_text = action_key.upper()
+                if hasattr(self, 'consume_action_display'):
+                    self.consume_action_display.configure(text=display_text)
+                if hasattr(self, 'consume_action_display2'):
+                    self.consume_action_display2.configure(text=display_text)
 
             # 오버레이 설정 불러오기
             overlay = config.get('overlay', {})
