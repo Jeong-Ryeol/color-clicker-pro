@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -54,7 +54,7 @@ class ColorClickerApp(ctk.CTk):
         super().__init__()
 
         self.title("🎯 Wonryeol Helper")
-        self.geometry("550x1000")
+        self.geometry("950x650")
         self.resizable(False, False)
 
         # 상태 변수
@@ -181,57 +181,623 @@ class ColorClickerApp(ctk.CTk):
         self.after(2000, self.update_world_boss_timer)
 
     def setup_ui(self):
-        # === 헤더 ===
-        header = ctk.CTkLabel(self, text="🎯 Wonryeol Helper",
-                              font=ctk.CTkFont(size=24, weight="bold"))
-        header.pack(pady=(10, 5))
+        # === 메인 컨테이너 (사이드바 + 컨텐츠) ===
+        main_container = ctk.CTkFrame(self, fg_color="transparent")
+        main_container.pack(fill="both", expand=True, padx=5, pady=5)
 
-        # === 탭뷰 생성 ===
-        self.tabview = ctk.CTkTabview(self, width=530, height=920)
-        self.tabview.pack(pady=5, padx=10, fill="both", expand=True)
+        # === 왼쪽 사이드바 ===
+        self.sidebar = ctk.CTkFrame(main_container, width=140, fg_color="#1a1a2e", corner_radius=10)
+        self.sidebar.pack(side="left", fill="y", padx=(5, 0), pady=5)
+        self.sidebar.pack_propagate(False)
 
-        # 탭 추가
-        self.tabview.add("Home")
-        self.tabview.add("사용법")
-        self.tabview.add("벨리알")
-        self.tabview.add("신화장난꾸러기")
-        self.tabview.add("아이템 버리기")
-        self.tabview.add("아이템 팔기")
-        self.tabview.add("아이템 먹기")
+        # 사이드바 헤더
+        ctk.CTkLabel(self.sidebar, text="Wonryeol",
+                     font=ctk.CTkFont(size=16, weight="bold"),
+                     text_color="#00aaff").pack(pady=(15, 0))
+        ctk.CTkLabel(self.sidebar, text="Helper",
+                     font=ctk.CTkFont(size=14, weight="bold"),
+                     text_color="#00aaff").pack()
+        ctk.CTkLabel(self.sidebar, text=f"v{VERSION}",
+                     font=ctk.CTkFont(size=10),
+                     text_color="#666666").pack(pady=(2, 15))
 
-        # === 벨리알 탭 ===
-        self.main_frame = ctk.CTkScrollableFrame(self.tabview.tab("벨리알"), width=500, height=850)
-        self.main_frame.pack(pady=5, padx=5, fill="both", expand=True)
+        # 구분선
+        ctk.CTkFrame(self.sidebar, height=2, fg_color="#333344").pack(fill="x", padx=10, pady=5)
 
-        # === 타겟 색상 ===
-        self.create_color_section()
+        # 메뉴 버튼들
+        self.menu_buttons = {}
+        menus = [
+            ("🏠 Home", "home"),
+            ("📖 사용법", "help"),
+            ("🗑️ 버리기", "discard"),
+            ("🍖 먹기", "consume"),
+            ("💰 팔기", "sell"),
+            ("✨ 꾸러기", "inventory"),
+            ("👁️ 벨리알", "belial"),
+            ("📋 패치", "patch"),
+        ]
 
-        # === 제외 색상 ===
-        self.create_exclude_section()
+        for text, key in menus:
+            btn = ctk.CTkButton(self.sidebar, text=text, anchor="w",
+                               font=ctk.CTkFont(size=13),
+                               fg_color="transparent", hover_color="#2a2a4e",
+                               text_color="#cccccc", height=40,
+                               command=lambda k=key: self.show_content(k))
+            btn.pack(fill="x", padx=8, pady=2)
+            self.menu_buttons[key] = btn
 
-        # === 설정 섹션 ===
-        self.create_settings_section()
+        # 사이드바 하단 여백
+        ctk.CTkFrame(self.sidebar, fg_color="transparent").pack(fill="both", expand=True)
 
-        # === 컨트롤 섹션 ===
-        self.create_control_section()
+        # 마우스 좌표 (하단)
+        self.coord_label = ctk.CTkLabel(self.sidebar, text="마우스: (0, 0)",
+                                        font=ctk.CTkFont(size=9), text_color="#666666")
+        self.coord_label.pack(pady=10)
 
-        # === 인벤토리 정리 탭 ===
-        self.create_inventory_tab()
+        # === 오른쪽 컨텐츠 영역 ===
+        self.content_area = ctk.CTkFrame(main_container, fg_color="#2b2b2b", corner_radius=10)
+        self.content_area.pack(side="left", fill="both", expand=True, padx=5, pady=5)
 
-        # === 아이템 버리기 탭 ===
-        self.create_discard_tab()
+        # 컨텐츠 프레임들 저장
+        self.content_frames = {}
 
-        # === 아이템 팔기 탭 ===
-        self.create_sell_tab()
+        # === 각 컨텐츠 생성 ===
+        # Home
+        self.content_frames["home"] = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
+        self.create_home_content(self.content_frames["home"])
 
-        # === 아이템 먹기 탭 ===
-        self.create_consume_tab()
+        # 사용법
+        self.content_frames["help"] = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
+        self.create_help_content(self.content_frames["help"])
 
-        # === Home 탭 (대시보드) ===
-        self.create_home_tab()
+        # 아이템 버리기
+        self.content_frames["discard"] = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
+        self.create_discard_content(self.content_frames["discard"])
 
-        # === 사용법 탭 ===
-        self.create_help_tab()
+        # 아이템 먹기
+        self.content_frames["consume"] = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
+        self.create_consume_content(self.content_frames["consume"])
+
+        # 아이템 팔기
+        self.content_frames["sell"] = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
+        self.create_sell_content(self.content_frames["sell"])
+
+        # 신화장난꾸러기
+        self.content_frames["inventory"] = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
+        self.create_inventory_content(self.content_frames["inventory"])
+
+        # 벨리알
+        self.content_frames["belial"] = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
+        self.main_frame = self.content_frames["belial"]  # 기존 호환성
+        self.create_belial_content(self.content_frames["belial"])
+
+        # 패치노트
+        self.content_frames["patch"] = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
+        self.create_patch_content(self.content_frames["patch"])
+
+        # 초기 화면: Home
+        self.current_content = None
+        self.show_content("home")
+
+    def show_content(self, key):
+        """컨텐츠 전환"""
+        # 이전 컨텐츠 숨기기
+        if self.current_content and self.current_content in self.content_frames:
+            self.content_frames[self.current_content].pack_forget()
+
+        # 새 컨텐츠 표시
+        if key in self.content_frames:
+            self.content_frames[key].pack(fill="both", expand=True, padx=10, pady=10)
+            self.current_content = key
+
+        # 메뉴 버튼 스타일 업데이트
+        for k, btn in self.menu_buttons.items():
+            if k == key:
+                btn.configure(fg_color="#1a5f2a", text_color="white")
+            else:
+                btn.configure(fg_color="transparent", text_color="#cccccc")
+
+    def create_section_box(self, parent, title, icon=""):
+        """섹션 박스 생성 헬퍼"""
+        box = ctk.CTkFrame(parent, fg_color="#363636", corner_radius=10)
+        box.pack(fill="x", pady=8, padx=5)
+
+        # 헤더
+        header = ctk.CTkFrame(box, fg_color="#1a5f2a", corner_radius=8, height=35)
+        header.pack(fill="x", padx=5, pady=5)
+        header.pack_propagate(False)
+
+        ctk.CTkLabel(header, text=f"{icon} {title}",
+                     font=ctk.CTkFont(size=14, weight="bold"),
+                     text_color="white").pack(side="left", padx=15, pady=5)
+
+        # 컨텐츠 영역
+        content = ctk.CTkFrame(box, fg_color="transparent")
+        content.pack(fill="x", padx=10, pady=(0, 10))
+
+        return content
+
+    # === Home 컨텐츠 (가로 배치) ===
+    def create_home_content(self, parent):
+        """Home 컨텐츠 생성"""
+        # 상단 행: 전체제어 + 기능상태 + 오버레이
+        row1 = ctk.CTkFrame(parent, fg_color="transparent")
+        row1.pack(fill="x", pady=5)
+
+        # 전체 제어
+        ctrl_box = self.create_section_box(row1, "전체 제어", "🎮")
+        ctrl_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        btn_frame = ctk.CTkFrame(ctrl_box, fg_color="transparent")
+        btn_frame.pack(fill="x", pady=5)
+
+        self.all_start_btn = ctk.CTkButton(btn_frame, text="▶ 시작",
+                                            font=ctk.CTkFont(size=14, weight="bold"),
+                                            height=45, command=self.start_all_functions,
+                                            fg_color="#28a745", hover_color="#218838")
+        self.all_start_btn.pack(fill="x", pady=2)
+
+        self.all_stop_btn = ctk.CTkButton(btn_frame, text="⏹ 중지",
+                                           font=ctk.CTkFont(size=14, weight="bold"),
+                                           height=45, command=self.stop_all_functions,
+                                           fg_color="#dc3545", hover_color="#c82333")
+        self.all_stop_btn.pack(fill="x", pady=2)
+
+        # 기능 상태
+        status_box = self.create_section_box(row1, "기능 상태", "⚡")
+        status_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        self.home_switches = {}
+        self.home_key_labels = {}
+        self.home_status_labels = {}
+
+        functions = [
+            ("벨리알", self.trigger_key, self.trigger_modifier, "is_running", self.home_toggle_belial),
+            ("꾸러기", self.inv_trigger_key, self.inv_trigger_modifier, "inv_running", self.home_toggle_inv),
+            ("버리기", self.discard_trigger_key, self.discard_trigger_modifier, "discard_running", self.home_toggle_discard),
+            ("팔기", self.sell_trigger_key, self.sell_trigger_modifier, "sell_running", self.home_toggle_sell),
+            ("먹기", self.consume_trigger_key, self.consume_trigger_modifier, "consume_running", self.home_toggle_consume),
+        ]
+
+        for name, key_var, mod_var, running_attr, toggle_func in functions:
+            row = ctk.CTkFrame(status_box, fg_color="transparent")
+            row.pack(fill="x", pady=1)
+
+            ctk.CTkLabel(row, text=name, width=50, anchor="w",
+                         font=ctk.CTkFont(size=11)).pack(side="left")
+
+            key_label = ctk.CTkLabel(row, text="", width=60, anchor="center",
+                                     text_color="#ff9900", font=ctk.CTkFont(size=10, weight="bold"))
+            key_label.pack(side="left")
+            self.home_key_labels[running_attr] = (key_label, key_var, mod_var)
+
+            status_label = ctk.CTkLabel(row, text="OFF", width=30,
+                                        text_color="#666666", font=ctk.CTkFont(size=10))
+            status_label.pack(side="left")
+            self.home_status_labels[running_attr] = status_label
+
+            switch = ctk.CTkSwitch(row, text="", width=35, command=toggle_func)
+            switch.pack(side="right")
+            self.home_switches[running_attr] = switch
+
+        # 오버레이
+        overlay_box = self.create_section_box(row1, "오버레이", "🖥️")
+        overlay_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        self.overlay_toggle_btn = ctk.CTkButton(overlay_box, text="켜기",
+                                                 command=self.toggle_overlay, height=35,
+                                                 fg_color="#28a745", hover_color="#218838")
+        self.overlay_toggle_btn.pack(fill="x", pady=2)
+
+        self.overlay_repos_btn = ctk.CTkButton(overlay_box, text="재배치",
+                                                command=self.start_overlay_reposition, height=35,
+                                                fg_color="#6c757d", hover_color="#5a6268")
+        self.overlay_repos_btn.pack(fill="x", pady=2)
+
+        alpha_frame = ctk.CTkFrame(overlay_box, fg_color="transparent")
+        alpha_frame.pack(fill="x", pady=2)
+        ctk.CTkLabel(alpha_frame, text="투명도", font=ctk.CTkFont(size=10)).pack(side="left")
+        self.alpha_label = ctk.CTkLabel(alpha_frame, text="85%", font=ctk.CTkFont(size=10))
+        self.alpha_label.pack(side="right")
+        ctk.CTkSlider(overlay_box, from_=0.3, to=1.0, variable=self.overlay_alpha,
+                      command=self.update_overlay_alpha, height=15).pack(fill="x", pady=2)
+
+        # 하단 행: 설정관리 + 월드보스 + 알림
+        row2 = ctk.CTkFrame(parent, fg_color="transparent")
+        row2.pack(fill="x", pady=5)
+
+        # 설정 관리
+        save_box = self.create_section_box(row2, "설정 관리", "💾")
+        save_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        ctk.CTkButton(save_box, text="저장", command=self.save_config,
+                      fg_color="#007bff", hover_color="#0056b3", height=30).pack(fill="x", pady=1)
+        ctk.CTkButton(save_box, text="불러오기", command=self.load_config,
+                      fg_color="#17a2b8", hover_color="#138496", height=30).pack(fill="x", pady=1)
+        ctk.CTkButton(save_box, text="📤 내보내기", command=self.export_config,
+                      fg_color="#fd7e14", hover_color="#e96b00", height=30).pack(fill="x", pady=1)
+        ctk.CTkButton(save_box, text="📥 가져오기", command=self.import_config,
+                      fg_color="#20c997", hover_color="#17a689", height=30).pack(fill="x", pady=1)
+
+        # 월드 보스
+        boss_box = self.create_section_box(row2, "월드 보스", "🌍")
+        boss_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        self.home_boss_name = ctk.CTkLabel(boss_box, text="로딩 중...",
+                                           font=ctk.CTkFont(size=16, weight="bold"),
+                                           text_color="#ffaa00")
+        self.home_boss_name.pack(pady=5)
+
+        self.home_boss_time = ctk.CTkLabel(boss_box, text="",
+                                           font=ctk.CTkFont(size=14, weight="bold"),
+                                           text_color="#00ff00")
+        self.home_boss_time.pack()
+
+        ctk.CTkButton(boss_box, text="🔄 새로고침", height=25, width=100,
+                      command=self.refresh_world_boss,
+                      fg_color="#555555").pack(pady=5)
+
+        # 알림 설정
+        alert_box = self.create_section_box(row2, "알림", "🔔")
+        alert_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        sound_row = ctk.CTkFrame(alert_box, fg_color="transparent")
+        sound_row.pack(fill="x", pady=10)
+        ctk.CTkLabel(sound_row, text="소리 알림", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkSwitch(sound_row, text="", variable=self.sound_enabled, width=40).pack(side="right")
+
+        ctk.CTkLabel(alert_box, text="기능 ON/OFF시\n효과음 재생",
+                     font=ctk.CTkFont(size=10), text_color="#888888").pack(pady=5)
+
+    # === 벨리알 컨텐츠 ===
+    def create_belial_content(self, parent):
+        """벨리알 컨텐츠 생성"""
+        self.main_frame = parent
+
+        # 상단 행
+        row1 = ctk.CTkFrame(parent, fg_color="transparent")
+        row1.pack(fill="x", pady=5)
+
+        # 타겟 색상
+        color_box = self.create_section_box(row1, "타겟 색상", "🎨")
+        color_box.master.pack(side="left", fill="both", expand=True, padx=2)
+        self.color_section_parent = color_box
+        self.create_color_section_content(color_box)
+
+        # 제외 색상
+        exclude_box = self.create_section_box(row1, "제외 색상", "🚫")
+        exclude_box.master.pack(side="left", fill="both", expand=True, padx=2)
+        self.create_exclude_section_content(exclude_box)
+
+        # 하단 행
+        row2 = ctk.CTkFrame(parent, fg_color="transparent")
+        row2.pack(fill="x", pady=5)
+
+        # 설정
+        settings_box = self.create_section_box(row2, "설정", "⚙️")
+        settings_box.master.pack(side="left", fill="both", expand=True, padx=2)
+        self.create_settings_section_content(settings_box)
+
+        # 검색 영역
+        area_box = self.create_section_box(row2, "검색 영역", "📐")
+        area_box.master.pack(side="left", fill="both", expand=True, padx=2)
+        self.create_area_section_content(area_box)
+
+        # 컨트롤
+        ctrl_box = self.create_section_box(row2, "컨트롤", "🎮")
+        ctrl_box.master.pack(side="left", fill="both", expand=True, padx=2)
+        self.create_control_section_content(ctrl_box)
+
+    def create_color_section_content(self, parent):
+        """타겟 색상 섹션 내용"""
+        # 색상 리스트
+        self.color_listbox = tk.Listbox(parent, height=5, bg='#2b2b2b', fg='white',
+                                        selectbackground='#1a5f2a', font=('맑은 고딕', 9))
+        self.color_listbox.pack(fill="x", pady=5)
+
+        # 버튼들
+        btn_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        btn_frame.pack(fill="x")
+
+        ctk.CTkButton(btn_frame, text="화면추출", width=70, height=28,
+                      command=self.start_screen_picker, fg_color="#28a745").pack(side="left", padx=1)
+        ctk.CTkButton(btn_frame, text="직접입력", width=70, height=28,
+                      command=self.add_color_manual, fg_color="#17a2b8").pack(side="left", padx=1)
+        ctk.CTkButton(btn_frame, text="삭제", width=50, height=28,
+                      command=self.remove_color, fg_color="#dc3545").pack(side="left", padx=1)
+
+        self.picker_status = ctk.CTkLabel(parent, text="", text_color="#00bfff", font=ctk.CTkFont(size=10))
+        self.picker_status.pack(pady=2)
+
+    def create_exclude_section_content(self, parent):
+        """제외 색상 섹션 내용"""
+        self.exclude_listbox = tk.Listbox(parent, height=5, bg='#2b2b2b', fg='white',
+                                          selectbackground='#dc3545', font=('맑은 고딕', 9))
+        self.exclude_listbox.pack(fill="x", pady=5)
+
+        btn_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        btn_frame.pack(fill="x")
+
+        ctk.CTkButton(btn_frame, text="화면추출", width=70, height=28,
+                      command=self.start_exclude_picker, fg_color="#fd7e14").pack(side="left", padx=1)
+        ctk.CTkButton(btn_frame, text="직접입력", width=70, height=28,
+                      command=self.add_exclude_manual, fg_color="#17a2b8").pack(side="left", padx=1)
+        ctk.CTkButton(btn_frame, text="삭제", width=50, height=28,
+                      command=self.remove_exclude_color, fg_color="#dc3545").pack(side="left", padx=1)
+
+    def create_settings_section_content(self, parent):
+        """설정 섹션 내용"""
+        # 색상 허용 오차
+        tol_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        tol_frame.pack(fill="x", pady=2)
+        ctk.CTkLabel(tol_frame, text="색상 오차:", font=ctk.CTkFont(size=11)).pack(side="left")
+        ctk.CTkEntry(tol_frame, textvariable=self.color_tolerance, width=50).pack(side="right")
+
+        # 클릭 딜레이
+        delay_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        delay_frame.pack(fill="x", pady=2)
+        ctk.CTkLabel(delay_frame, text="딜레이(ms):", font=ctk.CTkFont(size=11)).pack(side="left")
+        ctk.CTkEntry(delay_frame, textvariable=self.click_delay, width=50).pack(side="right")
+
+        # 핫키
+        key_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        key_frame.pack(fill="x", pady=2)
+        ctk.CTkLabel(key_frame, text="핫키:", font=ctk.CTkFont(size=11)).pack(side="left")
+        ctk.CTkComboBox(key_frame, values=["없음", "Ctrl", "Alt", "Shift"],
+                        variable=self.trigger_modifier, width=60).pack(side="right", padx=2)
+        ctk.CTkEntry(key_frame, textvariable=self.trigger_key, width=40).pack(side="right")
+
+    def create_area_section_content(self, parent):
+        """검색 영역 섹션 내용"""
+        # 전체 화면 체크박스
+        ctk.CTkCheckBox(parent, text="전체 화면", variable=self.use_full_screen,
+                        command=self.toggle_area_mode).pack(anchor="w", pady=2)
+
+        # 영역 설정 버튼
+        self.area_btn = ctk.CTkButton(parent, text="영역 설정", height=30,
+                                      command=self.start_area_selection,
+                                      fg_color="#6c757d")
+        self.area_btn.pack(fill="x", pady=2)
+
+        # 현재 영역 표시
+        self.area_label = ctk.CTkLabel(parent, text="영역: 전체 화면",
+                                       font=ctk.CTkFont(size=10), text_color="#888888")
+        self.area_label.pack(pady=2)
+
+    def create_control_section_content(self, parent):
+        """컨트롤 섹션 내용"""
+        self.start_btn = ctk.CTkButton(parent, text="▶ 시작", height=40,
+                                       command=self.toggle_running,
+                                       fg_color="#28a745", hover_color="#218838",
+                                       font=ctk.CTkFont(size=14, weight="bold"))
+        self.start_btn.pack(fill="x", pady=5)
+
+        self.status_label = ctk.CTkLabel(parent, text="⏸️ 대기 중",
+                                         font=ctk.CTkFont(size=12))
+        self.status_label.pack(pady=5)
+
+    # === 신화장난꾸러기 컨텐츠 ===
+    def create_inventory_content(self, parent):
+        """신화장난꾸러기 컨텐츠 생성"""
+        row1 = ctk.CTkFrame(parent, fg_color="transparent")
+        row1.pack(fill="x", pady=5)
+
+        # 보존 색상
+        color_box = self.create_section_box(row1, "보존 색상", "🎨")
+        color_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        self.inv_color_preview = ctk.CTkFrame(color_box, width=50, height=30, fg_color="#000000")
+        self.inv_color_preview.pack(pady=5)
+
+        color_row = ctk.CTkFrame(color_box, fg_color="transparent")
+        color_row.pack(fill="x")
+        ctk.CTkEntry(color_row, textvariable=self.inv_keep_color, width=80).pack(side="left", padx=2)
+        ctk.CTkButton(color_row, text="추출", width=50, height=28,
+                      command=self.inv_pick_color, fg_color="#28a745").pack(side="left", padx=2)
+
+        tol_row = ctk.CTkFrame(color_box, fg_color="transparent")
+        tol_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(tol_row, text="허용오차:", font=ctk.CTkFont(size=11)).pack(side="left")
+        ctk.CTkEntry(tol_row, textvariable=self.inv_tolerance, width=50).pack(side="right")
+
+        # 설정
+        settings_box = self.create_section_box(row1, "설정", "⚙️")
+        settings_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        key_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        key_row.pack(fill="x", pady=2)
+        ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(size=11)).pack(side="left")
+        ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
+                        variable=self.inv_trigger_modifier, width=60).pack(side="right", padx=2)
+        ctk.CTkEntry(key_row, textvariable=self.inv_trigger_key, width=40).pack(side="right")
+
+        delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        delay_row.pack(fill="x", pady=2)
+        ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(size=11)).pack(side="left")
+        ctk.CTkEntry(delay_row, textvariable=self.inv_delay, width=50).pack(side="right")
+
+        # 컨트롤
+        ctrl_box = self.create_section_box(row1, "컨트롤", "🎮")
+        ctrl_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        self.inv_start_btn = ctk.CTkButton(ctrl_box, text="▶ 시작", height=40,
+                                           command=self.toggle_inv_running,
+                                           fg_color="#28a745",
+                                           font=ctk.CTkFont(size=14, weight="bold"))
+        self.inv_start_btn.pack(fill="x", pady=5)
+
+        self.inv_status_label = ctk.CTkLabel(ctrl_box, text="⏸️ 대기 중",
+                                             font=ctk.CTkFont(size=12))
+        self.inv_status_label.pack(pady=5)
+
+    # === 아이템 버리기 컨텐츠 ===
+    def create_discard_content(self, parent):
+        """아이템 버리기 컨텐츠 생성"""
+        row1 = ctk.CTkFrame(parent, fg_color="transparent")
+        row1.pack(fill="x", pady=5)
+
+        # 설정
+        settings_box = self.create_section_box(row1, "설정", "⚙️")
+        settings_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        key_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        key_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
+                        variable=self.discard_trigger_modifier, width=70).pack(side="right", padx=2)
+        ctk.CTkEntry(key_row, textvariable=self.discard_trigger_key, width=50).pack(side="right")
+
+        delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        delay_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkEntry(delay_row, textvariable=self.discard_delay, width=60).pack(side="right")
+
+        count_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        count_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(count_row, text="반복 횟수:", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkEntry(count_row, textvariable=self.discard_count, width=60).pack(side="right")
+
+        # 컨트롤
+        ctrl_box = self.create_section_box(row1, "컨트롤", "🎮")
+        ctrl_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        self.discard_start_btn = ctk.CTkButton(ctrl_box, text="▶ 시작", height=50,
+                                               command=self.toggle_discard_running,
+                                               fg_color="#28a745",
+                                               font=ctk.CTkFont(size=16, weight="bold"))
+        self.discard_start_btn.pack(fill="x", pady=10)
+
+        self.discard_status_label = ctk.CTkLabel(ctrl_box, text="⏸️ 대기 중",
+                                                 font=ctk.CTkFont(size=14))
+        self.discard_status_label.pack(pady=10)
+
+        ctk.CTkLabel(ctrl_box, text="💡 마우스를 아이템 위에 놓고\n핫키를 누르면 Ctrl+클릭 반복",
+                     font=ctk.CTkFont(size=11), text_color="#888888").pack(pady=5)
+
+    # === 아이템 먹기 컨텐츠 ===
+    def create_consume_content(self, parent):
+        """아이템 먹기 컨텐츠 생성"""
+        row1 = ctk.CTkFrame(parent, fg_color="transparent")
+        row1.pack(fill="x", pady=5)
+
+        # 설정
+        settings_box = self.create_section_box(row1, "설정", "⚙️")
+        settings_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        key_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        key_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
+                        variable=self.consume_trigger_modifier, width=70).pack(side="right", padx=2)
+        ctk.CTkEntry(key_row, textvariable=self.consume_trigger_key, width=50).pack(side="right")
+
+        delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        delay_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkEntry(delay_row, textvariable=self.consume_delay, width=60).pack(side="right")
+
+        action_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        action_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(action_row, text="누를 키:", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkComboBox(action_row, values=["우클릭", "좌클릭", "Space", "E", "F", "R"],
+                        variable=self.consume_action_key, width=80).pack(side="right")
+
+        # 컨트롤
+        ctrl_box = self.create_section_box(row1, "컨트롤", "🎮")
+        ctrl_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        self.consume_start_btn = ctk.CTkButton(ctrl_box, text="▶ 시작", height=50,
+                                               command=self.toggle_consume_running,
+                                               fg_color="#28a745",
+                                               font=ctk.CTkFont(size=16, weight="bold"))
+        self.consume_start_btn.pack(fill="x", pady=10)
+
+        self.consume_status_label = ctk.CTkLabel(ctrl_box, text="⏸️ 대기 중",
+                                                 font=ctk.CTkFont(size=14))
+        self.consume_status_label.pack(pady=10)
+
+        ctk.CTkLabel(ctrl_box, text="💡 선택한 키를 반복해서 누름",
+                     font=ctk.CTkFont(size=11), text_color="#888888").pack(pady=5)
+
+    # === 아이템 팔기 컨텐츠 ===
+    def create_sell_content(self, parent):
+        """아이템 팔기 컨텐츠 생성"""
+        row1 = ctk.CTkFrame(parent, fg_color="transparent")
+        row1.pack(fill="x", pady=5)
+
+        # 설정
+        settings_box = self.create_section_box(row1, "설정", "⚙️")
+        settings_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        key_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        key_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
+                        variable=self.sell_trigger_modifier, width=70).pack(side="right", padx=2)
+        ctk.CTkEntry(key_row, textvariable=self.sell_trigger_key, width=50).pack(side="right")
+
+        delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        delay_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkEntry(delay_row, textvariable=self.sell_delay, width=60).pack(side="right")
+
+        count_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        count_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(count_row, text="반복 횟수:", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkEntry(count_row, textvariable=self.sell_count, width=60).pack(side="right")
+
+        # 컨트롤
+        ctrl_box = self.create_section_box(row1, "컨트롤", "🎮")
+        ctrl_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        self.sell_start_btn = ctk.CTkButton(ctrl_box, text="▶ 시작", height=50,
+                                            command=self.toggle_sell_running,
+                                            fg_color="#28a745",
+                                            font=ctk.CTkFont(size=16, weight="bold"))
+        self.sell_start_btn.pack(fill="x", pady=10)
+
+        self.sell_status_label = ctk.CTkLabel(ctrl_box, text="⏸️ 대기 중",
+                                              font=ctk.CTkFont(size=14))
+        self.sell_status_label.pack(pady=10)
+
+        ctk.CTkLabel(ctrl_box, text="💡 상점에서 우클릭 반복",
+                     font=ctk.CTkFont(size=11), text_color="#888888").pack(pady=5)
+
+    # === 사용법 컨텐츠 ===
+    def create_help_content(self, parent):
+        """사용법 컨텐츠 생성"""
+        ctk.CTkLabel(parent, text="📖 사용법 안내",
+                     font=ctk.CTkFont(size=20, weight="bold")).pack(pady=15)
+
+        helps = [
+            ("🎯 기본 사용법", "1. 각 메뉴에서 설정\n2. Home에서 [시작] 클릭\n3. 게임에서 핫키 사용"),
+            ("👁️ 벨리알", "화면에서 특정 색상 찾아 자동 클릭\n[화면추출]로 색상 등록"),
+            ("✨ 신화장난꾸러기", "인벤토리에서 특정 색상만 즐겨찾기\n스페이스바로 등록"),
+            ("🗑️ 버리기/💰팔기/🍖먹기", "마우스 위치에서 반복 클릭\n핫키로 ON/OFF"),
+        ]
+
+        for title, desc in helps:
+            box = self.create_section_box(parent, title, "")
+            ctk.CTkLabel(box, text=desc, font=ctk.CTkFont(size=12),
+                        justify="left").pack(anchor="w", pady=5)
+
+    # === 패치노트 컨텐츠 ===
+    def create_patch_content(self, parent):
+        """패치노트 컨텐츠 생성"""
+        ctk.CTkLabel(parent, text="📋 패치노트",
+                     font=ctk.CTkFont(size=20, weight="bold")).pack(pady=10)
+        ctk.CTkLabel(parent, text=f"현재 버전: v{VERSION}",
+                     font=ctk.CTkFont(size=14), text_color="#00aaff").pack(pady=5)
+
+        self.patch_notes_container = ctk.CTkFrame(parent, fg_color="transparent")
+        self.patch_notes_container.pack(fill="both", expand=True, padx=5, pady=5)
+
+        ctk.CTkLabel(self.patch_notes_container, text="로딩 중...").pack(pady=20)
+
+        ctk.CTkButton(parent, text="🔄 새로고침", width=120,
+                      command=self.fetch_patch_notes).pack(pady=10)
+
+        threading.Thread(target=self.fetch_patch_notes, daemon=True).start()
 
     def create_color_section(self):
         frame = ctk.CTkFrame(self.main_frame)
@@ -1873,6 +2439,112 @@ class ColorClickerApp(ctk.CTk):
 """
         ctk.CTkLabel(trouble_frame, text=trouble_text, justify="left",
                      font=ctk.CTkFont(size=13)).pack(padx=15, pady=10)
+
+    def create_patch_notes_tab(self):
+        """패치노트 탭 UI 생성"""
+        patch_frame = ctk.CTkScrollableFrame(self.tabview.tab("패치노트"), width=500, height=850)
+        patch_frame.pack(pady=5, padx=5, fill="both", expand=True)
+
+        # === 헤더 ===
+        ctk.CTkLabel(patch_frame, text="📋 패치노트",
+                     font=ctk.CTkFont(size=22, weight="bold")).pack(pady=15)
+        ctk.CTkLabel(patch_frame, text="버전별 업데이트 내역",
+                     text_color="gray", font=ctk.CTkFont(size=14)).pack()
+
+        # 현재 버전 표시
+        ctk.CTkLabel(patch_frame, text=f"현재 버전: v{VERSION}",
+                     font=ctk.CTkFont(size=16, weight="bold"),
+                     text_color="#00aaff").pack(pady=(15, 10))
+
+        # 패치노트 컨테이너
+        self.patch_notes_container = ctk.CTkFrame(patch_frame, fg_color="transparent")
+        self.patch_notes_container.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # 로딩 표시
+        self.patch_loading_label = ctk.CTkLabel(self.patch_notes_container,
+                                                 text="패치노트 불러오는 중...",
+                                                 font=ctk.CTkFont(size=14))
+        self.patch_loading_label.pack(pady=20)
+
+        # 새로고침 버튼
+        ctk.CTkButton(patch_frame, text="🔄 새로고침", width=150,
+                      command=self.fetch_patch_notes).pack(pady=10)
+
+        # 패치노트 가져오기 (백그라운드)
+        threading.Thread(target=self.fetch_patch_notes, daemon=True).start()
+
+    def fetch_patch_notes(self):
+        """GitHub에서 모든 릴리즈 정보 가져오기"""
+        try:
+            # GitHub API - 모든 릴리즈 가져오기
+            url = f"https://api.github.com/repos/{GITHUB_REPO}/releases"
+            req = urllib.request.Request(url)
+            req.add_header('User-Agent', 'WonryeolHelper')
+
+            with urllib.request.urlopen(req, timeout=15) as response:
+                releases = json.loads(response.read().decode())
+
+            # UI 업데이트 (메인 스레드)
+            self.after(0, lambda: self.display_patch_notes(releases))
+
+        except Exception as e:
+            self.after(0, lambda: self.display_patch_notes_error(str(e)))
+
+    def display_patch_notes(self, releases):
+        """패치노트 표시"""
+        # 기존 내용 제거
+        for widget in self.patch_notes_container.winfo_children():
+            widget.destroy()
+
+        if not releases:
+            ctk.CTkLabel(self.patch_notes_container,
+                        text="릴리즈 정보가 없습니다.",
+                        font=ctk.CTkFont(size=14)).pack(pady=20)
+            return
+
+        # 각 릴리즈 표시
+        for release in releases:
+            version = release.get('tag_name', 'Unknown')
+            title = release.get('name', '') or version
+            body = release.get('body', '') or '변경 사항 없음'
+            published = release.get('published_at', '')[:10]  # YYYY-MM-DD
+
+            # 릴리즈 프레임
+            release_frame = ctk.CTkFrame(self.patch_notes_container, fg_color="#2b2b2b", corner_radius=8)
+            release_frame.pack(fill="x", pady=8)
+
+            # 헤더 (버전 + 날짜)
+            header_frame = ctk.CTkFrame(release_frame, fg_color="#1a5f2a", corner_radius=5)
+            header_frame.pack(fill="x", padx=5, pady=5)
+
+            ctk.CTkLabel(header_frame, text=f"  {version}  ",
+                        font=ctk.CTkFont(size=16, weight="bold"),
+                        text_color="white").pack(side="left", padx=10, pady=8)
+
+            ctk.CTkLabel(header_frame, text=published,
+                        font=ctk.CTkFont(size=12),
+                        text_color="#aaaaaa").pack(side="right", padx=10, pady=8)
+
+            # 제목
+            if title and title != version:
+                ctk.CTkLabel(release_frame, text=title,
+                            font=ctk.CTkFont(size=14, weight="bold"),
+                            text_color="#ffaa00").pack(anchor="w", padx=15, pady=(10, 5))
+
+            # 내용
+            ctk.CTkLabel(release_frame, text=body,
+                        font=ctk.CTkFont(size=13),
+                        justify="left", wraplength=450).pack(anchor="w", padx=15, pady=(5, 15))
+
+    def display_patch_notes_error(self, error):
+        """패치노트 로드 실패 표시"""
+        for widget in self.patch_notes_container.winfo_children():
+            widget.destroy()
+
+        ctk.CTkLabel(self.patch_notes_container,
+                    text=f"패치노트를 불러올 수 없습니다.\n\n{error}",
+                    font=ctk.CTkFont(size=14),
+                    text_color="#ff6666").pack(pady=20)
 
     def update_home_status(self):
         """Home 탭 상태 실시간 업데이트"""
