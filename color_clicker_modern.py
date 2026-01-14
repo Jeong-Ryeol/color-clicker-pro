@@ -17,7 +17,7 @@ import re
 from datetime import datetime, timezone
 
 # === 버전 정보 ===
-VERSION = "1.6.8"
+VERSION = "1.6.9"
 GITHUB_REPO = "Jeong-Ryeol/color-clicker-pro"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -2889,13 +2889,22 @@ class ColorClickerApp(ctk.CTk):
                 else:
                     label.configure(text="● OFF", fg='#666666')
 
-            # 오버레이 기능명 색상 업데이트 (ON: 빨간색, OFF: 흰색)
+            # 오버레이 기능명 색상 업데이트 (실행 중: 빨간색, 대기/OFF: 흰색)
             if hasattr(self, 'overlay_name_labels') and attr in self.overlay_name_labels:
                 name_label = self.overlay_name_labels[attr]
-                if is_on:
-                    name_label.configure(fg='#ff4444')  # 빨간색
+                # 실제 매크로 실행 중 상태 확인
+                active_map = {
+                    "is_running": self.detection_active,
+                    "inv_running": self.inv_cleanup_active,
+                    "discard_running": self.discard_active,
+                    "sell_running": self.sell_active,
+                    "consume_running": self.consume_active
+                }
+                is_active = active_map.get(attr, False)
+                if is_active:
+                    name_label.configure(fg='#ff4444')  # 실행 중 - 빨간색
                 else:
-                    name_label.configure(fg='#ffffff')  # 흰색
+                    name_label.configure(fg='#ffffff')  # 대기/OFF - 흰색
 
         # UI 즉시 반영
         self.update_idletasks()
@@ -3054,6 +3063,15 @@ class ColorClickerApp(ctk.CTk):
             "consume_running": self.consume_running
         }
 
+        # 실제 매크로 실행 중 상태 (active)
+        active_states = {
+            "is_running": self.detection_active,
+            "inv_running": self.inv_cleanup_active,
+            "discard_running": self.discard_active,
+            "sell_running": self.sell_active,
+            "consume_running": self.consume_active
+        }
+
         for attr, is_on in states.items():
             # 상태 라벨 업데이트
             if attr in self.overlay_labels:
@@ -3063,13 +3081,14 @@ class ColorClickerApp(ctk.CTk):
                 else:
                     label.configure(text="● OFF", fg='#666666')
 
-            # 기능명 라벨 색상 업데이트 (ON: 빨간색, OFF: 흰색)
+            # 기능명 라벨 색상 업데이트 (실행 중: 빨간색, 대기/OFF: 흰색)
             if attr in self.overlay_name_labels:
                 name_label = self.overlay_name_labels[attr]
-                if is_on:
-                    name_label.configure(fg='#ff4444')  # 빨간색
+                is_active = active_states.get(attr, False)
+                if is_active:
+                    name_label.configure(fg='#ff4444')  # 실행 중 - 빨간색
                 else:
-                    name_label.configure(fg='#ffffff')  # 흰색
+                    name_label.configure(fg='#ffffff')  # 대기/OFF - 흰색
 
         # 200ms 후 다시 업데이트
         if self.overlay_window:
