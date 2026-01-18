@@ -140,38 +140,70 @@ class UpdaterMixin:
 
             self.after(0, self.show_update_progress)
 
-            req = urllib.request.Request(download_url)
-            req.add_header('User-Agent', 'WonryeolHelper')
+            # 기존 임시 파일 정리
+            for f in [new_exe, backup_exe]:
+                if os.path.exists(f):
+                    try:
+                        os.remove(f)
+                    except:
+                        pass
 
-            with urllib.request.urlopen(req, timeout=60) as response:
+            # 다운로드 (GitHub 리다이렉트 처리)
+            req = urllib.request.Request(download_url)
+            req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')
+            req.add_header('Accept', 'application/octet-stream')
+
+            with urllib.request.urlopen(req, timeout=180) as response:
+                file_data = response.read()
                 with open(new_exe, 'wb') as f:
-                    f.write(response.read())
+                    f.write(file_data)
+
+            # 다운로드 검증 (최소 10MB)
+            file_size = os.path.getsize(new_exe)
+            if file_size < 10000000:
+                raise Exception(f"파일이 불완전합니다 ({file_size // 1048576}MB). 인터넷 연결을 확인하세요.")
 
             batch_content = f'''@echo off
-chcp 65001 >nul
-echo.
+chcp 65001 > nul
+title Wonryeol Helper Updater
 echo ========================================
 echo   Wonryeol Helper 업데이트 중...
 echo ========================================
 echo.
-ping 127.0.0.1 -n 3 >nul
-if exist "{backup_exe}" del /f /q "{backup_exe}"
-if exist "{current_exe}" (
-    move /y "{current_exe}" "{backup_exe}"
-    if errorlevel 1 (
-        echo 업데이트 실패! 복원 중...
-        ping 127.0.0.1 -n 2 >nul
-        goto :end
-    )
+echo 프로그램 종료 대기 중...
+timeout /t 3 /nobreak > nul
+
+echo 기존 파일 백업 중...
+if exist "{backup_exe}" del /f /q "{backup_exe}" 2>nul
+timeout /t 1 /nobreak > nul
+
+:move_current
+move /y "{current_exe}" "{backup_exe}" 2>nul
+if errorlevel 1 (
+    echo 프로그램이 아직 실행 중입니다. 재시도...
+    timeout /t 2 /nobreak > nul
+    goto move_current
 )
-move /y "{new_exe}" "{current_exe}"
+
+echo 새 버전 적용 중...
+copy /y "{new_exe}" "{current_exe}" > nul
+if errorlevel 1 (
+    echo 업데이트 실패! 복원 중...
+    move /y "{backup_exe}" "{current_exe}"
+    echo.
+    echo 오류가 발생했습니다. 아무 키나 누르세요...
+    pause > nul
+    exit /b 1
+)
+
 echo.
 echo ========================================
 echo   업데이트 완료!
 echo ========================================
 echo.
-start "" "{current_exe}"
-:end
+echo 프로그램을 다시 실행해주세요.
+echo.
+timeout /t 3 /nobreak > nul
 del /f /q "{backup_exe}" 2>nul
 del /f /q "{new_exe}" 2>nul
 (goto) 2>nul & del /f /q "%~f0"
@@ -201,4 +233,6 @@ del /f /q "{new_exe}" 2>nul
         self.update_dialog.grab_set()
 
         ctk.CTkLabel(self.update_dialog, text="업데이트 다운로드 중...",
-                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14)).pack(pady=30)
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=14)).pack(pady=20)
+        ctk.CTkLabel(self.update_dialog, text="잠시만 기다려주세요",
+                     text_color="gray").pack()

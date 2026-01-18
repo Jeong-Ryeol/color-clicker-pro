@@ -29,6 +29,9 @@ from features.inventory import InventoryMixin
 from features.discard import DiscardMixin
 from features.sell import SellMixin
 from features.consume import ConsumeMixin
+from features.consume2 import Consume2Mixin
+from features.skill_auto import SkillAutoMixin
+from features.quick_button import QuickButtonMixin
 
 # UI 믹스인
 from ui.overlay import OverlayMixin
@@ -45,6 +48,9 @@ class ColorClickerApp(
     DiscardMixin,
     SellMixin,
     ConsumeMixin,
+    Consume2Mixin,
+    SkillAutoMixin,
+    QuickButtonMixin,
     OverlayMixin,
     MainWindowMixin,
     UpdaterMixin
@@ -64,6 +70,9 @@ class ColorClickerApp(
         self.init_discard_vars()
         self.init_sell_vars()
         self.init_consume_vars()
+        self.init_consume2_vars()
+        self.init_skill_auto_vars()
+        self.init_quick_button_vars()
         self.init_overlay_vars()
         self.init_common_vars()
 
@@ -75,6 +84,7 @@ class ColorClickerApp(
 
         # 핫키 설정
         self.setup_hotkey()
+        self.setup_quick_button_hotkeys()
 
         # 마우스 좌표 업데이트
         self.update_mouse_pos()
@@ -104,6 +114,8 @@ class ColorClickerApp(
         self.auto_start_discard = ctk.BooleanVar(value=False)
         self.auto_start_sell = ctk.BooleanVar(value=False)
         self.auto_start_consume = ctk.BooleanVar(value=False)
+        self.auto_start_consume2 = ctk.BooleanVar(value=False)
+        self.auto_start_skill_auto = ctk.BooleanVar(value=False)
 
         # 월드 보스 타이머
         self.world_boss_name = ctk.StringVar(value="로딩 중...")
@@ -134,6 +146,13 @@ class ColorClickerApp(
             keyboard.on_press_key(self.sell_trigger_key.get(), self.on_sell_trigger_key, suppress=False)
         if not self.is_mouse_key(self.consume_trigger_key.get()):
             keyboard.on_press_key(self.consume_trigger_key.get(), self.on_consume_trigger_key, suppress=False)
+        if not self.is_mouse_key(self.consume2_trigger_key.get()):
+            keyboard.on_press_key(self.consume2_trigger_key.get(), self.on_consume2_trigger_key, suppress=False)
+        if not self.is_mouse_key(self.skill_auto_trigger_key.get()):
+            keyboard.on_press_key(self.skill_auto_trigger_key.get(), self.on_skill_auto_trigger_key, suppress=False)
+
+        # Enter로 pause/resume (스킬 자동 + 사기)
+        keyboard.on_press_key('enter', self.on_combined_enter_pause, suppress=False)
 
         # 긴급 정지 키 등록
         if not self.is_mouse_key(self.emergency_stop_key.get()):
@@ -158,6 +177,21 @@ class ColorClickerApp(
         elif required_modifier == "Shift":
             return keyboard.is_pressed('shift')
         return True
+
+    def check_hotkey_conflict(self, new_key):
+        """핫키 충돌 체크 - 긴급정지 키와 충돌 시 차단"""
+        new_key_lower = new_key.lower()
+        emergency_key = self.emergency_stop_key.get().lower()
+
+        if new_key_lower == emergency_key:
+            return f"⚠️ 경고: {new_key.upper()} 키가 긴급정지 키와 충돌합니다!\n다른 키를 선택해주세요."
+        return None
+
+    def on_combined_enter_pause(self, event):
+        """Enter 키 - 먹기 + 사기 + 스킬 자동 동시 pause/resume"""
+        self.on_consume_enter_pause(event)
+        self.on_consume2_enter_pause(event)
+        self.on_skill_auto_enter_pause(event)
 
     def start_mouse_polling(self):
         """마우스 버튼 폴링 시작"""
@@ -204,6 +238,10 @@ class ColorClickerApp(
             self.on_sell_trigger_key(None)
         if self.consume_trigger_key.get().lower() == button:
             self.on_consume_trigger_key(None)
+        if self.consume2_trigger_key.get().lower() == button:
+            self.on_consume2_trigger_key(None)
+        if self.skill_auto_trigger_key.get().lower() == button:
+            self.on_skill_auto_trigger_key(None)
 
     # =========================================
     # Home 탭 토글 함수들
@@ -227,6 +265,14 @@ class ColorClickerApp(
     def home_toggle_consume(self):
         """Home에서 아이템 먹기 토글"""
         self.toggle_consume_running()
+
+    def home_toggle_consume2(self):
+        """Home에서 아이템 사기 토글"""
+        self.toggle_consume2_running()
+
+    def home_toggle_skill_auto(self):
+        """Home에서 스킬 자동 토글"""
+        self.toggle_skill_auto_running()
 
     def change_emergency_key(self):
         """긴급 정지 키 변경"""
@@ -266,6 +312,11 @@ class ColorClickerApp(
         self.discard_active = False
         self.sell_active = False
         self.consume_active = False
+        self.consume_paused = False
+        self.consume2_active = False
+        self.consume2_paused = False
+        self.skill_auto_active = False
+        self.skill_auto_paused = False
 
         if self.is_running:
             self.status_label.configure(text=f"🔴 [{self.trigger_key.get().upper()}] 키로 시작")
@@ -277,6 +328,20 @@ class ColorClickerApp(
             self.sell_status_label.configure(text=f"🔴 [{self.sell_trigger_key.get().upper()}] 키로 시작")
         if self.consume_running:
             self.consume_status_label.configure(text=f"🔴 [{self.consume_trigger_key.get().upper()}] 키로 시작")
+        if self.consume2_running:
+            self.consume2_status_label.configure(text=f"🔴 [{self.consume2_trigger_key.get().upper()}] 키로 시작")
+        if self.skill_auto_running:
+            self.skill_auto_status_label.configure(text=f"🔴 [{self.skill_auto_trigger_key.get().upper()}] 키로 시작")
+            if hasattr(self, 'skill_auto_pause_label'):
+                self.skill_auto_pause_label.configure(text="")
+
+    def is_chatting(self):
+        """채팅 중인지 확인 (pause 상태면 채팅 중으로 간주)"""
+        return (
+            getattr(self, 'consume_paused', False) or
+            getattr(self, 'consume2_paused', False) or
+            getattr(self, 'skill_auto_paused', False)
+        )
 
     def apply_auto_start(self):
         """자동 시작 적용"""
@@ -290,6 +355,10 @@ class ColorClickerApp(
             self.toggle_sell_running()
         if self.auto_start_consume.get() and not self.consume_running:
             self.toggle_consume_running()
+        if self.auto_start_consume2.get() and not self.consume2_running:
+            self.toggle_consume2_running()
+        if self.auto_start_skill_auto.get() and not self.skill_auto_running:
+            self.toggle_skill_auto_running()
 
     # =========================================
     # Home 탭 상태 업데이트
@@ -301,7 +370,9 @@ class ColorClickerApp(
             "inv_running": self.inv_running,
             "discard_running": self.discard_running,
             "sell_running": self.sell_running,
-            "consume_running": self.consume_running
+            "consume_running": self.consume_running,
+            "consume2_running": self.consume2_running,
+            "skill_auto_running": self.skill_auto_running
         }
 
         for attr, is_on in states.items():
@@ -338,7 +409,9 @@ class ColorClickerApp(
             "inv_running": self.inv_running,
             "discard_running": self.discard_running,
             "sell_running": self.sell_running,
-            "consume_running": self.consume_running
+            "consume_running": self.consume_running,
+            "consume2_running": self.consume2_running,
+            "skill_auto_running": self.skill_auto_running
         }
 
         active_map = {
@@ -346,7 +419,9 @@ class ColorClickerApp(
             "inv_running": self.inv_cleanup_active,
             "discard_running": self.discard_active,
             "sell_running": self.sell_active,
-            "consume_running": self.consume_active
+            "consume_running": self.consume_active,
+            "consume2_running": self.consume2_active,
+            "skill_auto_running": self.skill_auto_active
         }
 
         for attr, is_on in states.items():
@@ -390,11 +465,15 @@ class ColorClickerApp(
             'colors': self.colors,
             'exclude_colors': self.exclude_colors,
             'tolerance': self.tolerance.get(),
+            'color_tolerance': self.color_tolerance.get(),
             'exclude_range': self.exclude_range.get(),
             'trigger_key': self.trigger_key.get(),
             'trigger_modifier': self.trigger_modifier.get(),
             'click_type': self.click_type.get(),
             'click_delay': self.click_delay.get(),
+            'use_full_screen': self.use_full_screen.get(),
+            'cooldown_distance': self.cooldown_distance.get(),
+            'cooldown_time': self.cooldown_time.get(),
             'search_area': {
                 'x1': self.search_x1.get(),
                 'y1': self.search_y1.get(),
@@ -421,6 +500,7 @@ class ColorClickerApp(
                 'rows': self.inv_rows.get(),
                 'trigger_key': self.inv_trigger_key.get(),
                 'trigger_modifier': self.inv_trigger_modifier.get(),
+                'delay': self.inv_delay.get(),
                 'move_duration': self.inv_move_duration.get(),
                 'panel_delay': self.inv_panel_delay.get(),
                 'space_delay': self.inv_space_delay.get(),
@@ -440,12 +520,36 @@ class ColorClickerApp(
                 'trigger_key': self.consume_trigger_key.get(),
                 'trigger_modifier': self.consume_trigger_modifier.get(),
                 'delay': self.consume_delay.get(),
+                'input_type': self.consume_input_type.get(),
                 'action_key': self.consume_action_key.get()
+            },
+            'consume2': {
+                'trigger_key': self.consume2_trigger_key.get(),
+                'trigger_modifier': self.consume2_trigger_modifier.get(),
+                'delay': self.consume2_delay.get(),
+                'input_type': self.consume2_input_type.get(),
+                'action_key': self.consume2_action_key.get()
+            },
+            'skill_auto': {
+                'trigger_key': self.skill_auto_trigger_key.get(),
+                'trigger_modifier': self.skill_auto_trigger_modifier.get(),
+                'honryeongsa_mode': self.honryeongsa_mode.get(),
+                'slots': [
+                    {
+                        'enabled': slot['enabled'].get(),
+                        'key': slot['key'].get(),
+                        'cooldown': slot['cooldown'].get()
+                    }
+                    for slot in self.skill_slots
+                ]
             },
             'overlay': {
                 'x': self.overlay_x.get(),
                 'y': self.overlay_y.get(),
                 'alpha': self.overlay_alpha.get(),
+                'scale': self.overlay_scale.get(),
+                'scale_w': self.overlay_scale_w.get(),
+                'scale_h': self.overlay_scale_h.get(),
                 'bg_color': self.overlay_bg_color.get()
             },
             'boss_alert_enabled': self.boss_alert_enabled.get(),
@@ -455,7 +559,24 @@ class ColorClickerApp(
                 'inv': self.auto_start_inv.get(),
                 'discard': self.auto_start_discard.get(),
                 'sell': self.auto_start_sell.get(),
-                'consume': self.auto_start_consume.get()
+                'consume': self.auto_start_consume.get(),
+                'consume2': self.auto_start_consume2.get(),
+                'skill_auto': self.auto_start_skill_auto.get()
+            },
+            'quick_btn_enabled': self.quick_btn_enabled.get(),
+            'quick_btn': {
+                'discard_x': self.quick_btn_x.get(),
+                'discard_y': self.quick_btn_y.get(),
+                'sell_x': self.quick_sell_x.get(),
+                'sell_y': self.quick_sell_y.get(),
+                'bundle_x': self.quick_bundle_x.get(),
+                'bundle_y': self.quick_bundle_y.get(),
+                'detect_pos1_x': self.detect_pos1_x.get(),
+                'detect_pos1_y': self.detect_pos1_y.get(),
+                'detect_color1': self.detect_color1.get(),
+                'detect_pos2_x': self.detect_pos2_x.get(),
+                'detect_pos2_y': self.detect_pos2_y.get(),
+                'detect_color2': self.detect_color2.get()
             }
         }
 
@@ -485,11 +606,15 @@ class ColorClickerApp(
             self.colors = config.get('colors', self.colors)
             self.exclude_colors = config.get('exclude_colors', self.exclude_colors)
             self.tolerance.set(config.get('tolerance', 0))
+            self.color_tolerance.set(config.get('color_tolerance', 0))
             self.exclude_range.set(config.get('exclude_range', 3))
             self.trigger_key.set(config.get('trigger_key', 'f4'))
             self.trigger_modifier.set(config.get('trigger_modifier', '없음'))
             self.click_type.set(config.get('click_type', 'fkey'))
             self.click_delay.set(config.get('click_delay', 0.01))
+            self.use_full_screen.set(config.get('use_full_screen', False))
+            self.cooldown_distance.set(config.get('cooldown_distance', 50))
+            self.cooldown_time.set(config.get('cooldown_time', 0.1))
 
             area = config.get('search_area', {})
             self.search_x1.set(area.get('x1', 6))
@@ -521,6 +646,7 @@ class ColorClickerApp(
                 self.inv_rows.set(inv.get('rows', 3))
                 self.inv_trigger_key.set(inv.get('trigger_key', 'f3'))
                 self.inv_trigger_modifier.set(inv.get('trigger_modifier', '없음'))
+                self.inv_delay.set(inv.get('delay', 0.01))
                 self.inv_move_duration.set(inv.get('move_duration', 0.15))
                 self.inv_panel_delay.set(inv.get('panel_delay', 0.08))
                 self.inv_space_delay.set(inv.get('space_delay', 0.05))
@@ -553,12 +679,50 @@ class ColorClickerApp(
                 self.consume_trigger_key.set(consume.get('trigger_key', 'mouse5'))
                 self.consume_trigger_modifier.set(consume.get('trigger_modifier', '없음'))
                 self.consume_delay.set(consume.get('delay', 0.01))
-                action_key = consume.get('action_key', consume.get('input_type', '우클릭'))
+                input_type = consume.get('input_type', '우클릭')
+                self.consume_input_type.set(input_type)
+                action_key = consume.get('action_key', input_type)
                 self.consume_action_key.set(action_key)
                 if hasattr(self, 'consume_key_display'):
                     self.consume_key_display.configure(text=self.consume_trigger_key.get().upper())
                 if hasattr(self, 'consume_action_display'):
                     self.consume_action_display.configure(text=action_key.upper())
+
+            # 사기 설정 (먹기 V2)
+            consume2 = config.get('consume2', {})
+            if consume2:
+                self.consume2_trigger_key.set(consume2.get('trigger_key', 'mouse4'))
+                self.consume2_trigger_modifier.set(consume2.get('trigger_modifier', '없음'))
+                self.consume2_delay.set(consume2.get('delay', 0.01))
+                input_type2 = consume2.get('input_type', '우클릭')
+                self.consume2_input_type.set(input_type2)
+                action_key2 = consume2.get('action_key', input_type2)
+                self.consume2_action_key.set(action_key2)
+                if hasattr(self, 'consume2_key_display'):
+                    self.consume2_key_display.configure(text=self.consume2_trigger_key.get().upper())
+                if hasattr(self, 'consume2_action_display'):
+                    self.consume2_action_display.configure(text=action_key2.upper())
+
+            # 스킬 자동 설정
+            skill_auto = config.get('skill_auto', {})
+            if skill_auto:
+                self.skill_auto_trigger_key.set(skill_auto.get('trigger_key', 'f6'))
+                self.skill_auto_trigger_modifier.set(skill_auto.get('trigger_modifier', '없음'))
+                self.honryeongsa_mode.set(skill_auto.get('honryeongsa_mode', False))
+                if hasattr(self, 'skill_auto_key_display'):
+                    self.skill_auto_key_display.configure(text=self.skill_auto_trigger_key.get().upper())
+
+                slots_data = skill_auto.get('slots', [])
+                for i, slot_data in enumerate(slots_data):
+                    if i < len(self.skill_slots):
+                        self.skill_slots[i]['enabled'].set(slot_data.get('enabled', False))
+                        self.skill_slots[i]['key'].set(slot_data.get('key', str(i + 1)))
+                        self.skill_slots[i]['cooldown'].set(slot_data.get('cooldown', 0.0))
+                        # key_label UI도 업데이트
+                        if hasattr(self, 'skill_slot_widgets') and i < len(self.skill_slot_widgets):
+                            self.skill_slot_widgets[i]['key_label'].configure(
+                                text=slot_data.get('key', str(i + 1)).upper()
+                            )
 
             # 오버레이 설정
             overlay = config.get('overlay', {})
@@ -566,9 +730,18 @@ class ColorClickerApp(
                 self.overlay_x.set(overlay.get('x', 100))
                 self.overlay_y.set(overlay.get('y', 100))
                 self.overlay_alpha.set(overlay.get('alpha', 0.85))
+                self.overlay_scale.set(overlay.get('scale', 1.0))
+                self.overlay_scale_w.set(overlay.get('scale_w', 1.0))
+                self.overlay_scale_h.set(overlay.get('scale_h', 1.0))
                 self.overlay_bg_color.set(overlay.get('bg_color', '#1a1a2e'))
                 if hasattr(self, 'alpha_label'):
                     self.alpha_label.configure(text=f"{int(self.overlay_alpha.get() * 100)}%")
+                if hasattr(self, 'scale_label'):
+                    self.scale_label.configure(text=f"{int(self.overlay_scale.get() * 100)}%")
+                if hasattr(self, 'scale_w_label'):
+                    self.scale_w_label.configure(text=f"{int(self.overlay_scale_w.get() * 100)}%")
+                if hasattr(self, 'scale_h_label'):
+                    self.scale_h_label.configure(text=f"{int(self.overlay_scale_h.get() * 100)}%")
                 if hasattr(self, 'bg_color_preview'):
                     self.bg_color_preview.configure(fg_color=self.overlay_bg_color.get())
 
@@ -588,6 +761,28 @@ class ColorClickerApp(
                 self.auto_start_discard.set(auto_start.get('discard', False))
                 self.auto_start_sell.set(auto_start.get('sell', False))
                 self.auto_start_consume.set(auto_start.get('consume', False))
+                self.auto_start_consume2.set(auto_start.get('consume2', False))
+                self.auto_start_skill_auto.set(auto_start.get('skill_auto', False))
+
+            # 빠른 버튼 설정
+            self.quick_btn_enabled.set(config.get('quick_btn_enabled', True))
+
+            quick_btn = config.get('quick_btn', {})
+            if quick_btn:
+                self.quick_btn_x.set(quick_btn.get('discard_x', 1812))
+                self.quick_btn_y.set(quick_btn.get('discard_y', 898))
+                self.quick_sell_x.set(quick_btn.get('sell_x', 1865))
+                self.quick_sell_y.set(quick_btn.get('sell_y', 899))
+                self.quick_bundle_x.set(quick_btn.get('bundle_x', 1759))
+                self.quick_bundle_y.set(quick_btn.get('bundle_y', 898))
+                self.detect_pos1_x.set(quick_btn.get('detect_pos1_x', 1738))
+                self.detect_pos1_y.set(quick_btn.get('detect_pos1_y', 267))
+                self.detect_pos2_x.set(quick_btn.get('detect_pos2_x', 1859))
+                self.detect_pos2_y.set(quick_btn.get('detect_pos2_y', 280))
+                # 각 위치별 색상 (이전 버전 호환성 유지)
+                old_color = quick_btn.get('detect_color', '#E4DBCA')
+                self.detect_color1.set(quick_btn.get('detect_color1', old_color))
+                self.detect_color2.set(quick_btn.get('detect_color2', old_color))
 
             if hasattr(self, 'key_display'):
                 self.key_display.configure(text=self.trigger_key.get().upper())
@@ -793,10 +988,13 @@ class ColorClickerApp(
                 if hasattr(self, 'home_boss_time'):
                     self.home_boss_time.configure(text=f"⏰ {time_str}", text_color=time_color)
 
-                if self.world_boss_label:
-                    boss_name = self.world_boss_name.get()
-                    overlay_text = f"{boss_name} {overlay_time}"
-                    self.world_boss_label.configure(text=overlay_text, fg=time_color)
+                # 오버레이 월드보스 업데이트
+                if self.overlay_window and hasattr(self, 'world_boss_label') and self.world_boss_label:
+                    try:
+                        self.world_boss_label.configure(text=f"{self.world_boss_name.get()} {overlay_time}", fg=time_color)
+                        self.overlay_window.update_idletasks()
+                    except:
+                        pass
             else:
                 self.world_boss_time.set("스폰됨!")
                 if hasattr(self, 'home_boss_time'):

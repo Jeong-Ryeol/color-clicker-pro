@@ -11,6 +11,37 @@ import threading
 from constants import VERSION, DEFAULT_FONT, COLORS
 
 
+def create_numeric_entry(parent, variable, width=50, is_float=True):
+    """숫자 입력용 안전한 Entry 생성 (빈 값 허용, 변수 연동)"""
+    entry = ctk.CTkEntry(parent, width=width)
+    entry.insert(0, str(variable.get()))
+
+    def on_focus_out(event):
+        try:
+            val = entry.get().strip()
+            if val == "":
+                val = "0"
+            if is_float:
+                variable.set(float(val))
+            else:
+                variable.set(int(val))
+        except ValueError:
+            entry.delete(0, "end")
+            entry.insert(0, str(variable.get()))
+
+    def on_variable_change(*args):
+        """변수 변경 시 Entry 업데이트"""
+        current = entry.get()
+        new_val = str(variable.get())
+        if current != new_val:
+            entry.delete(0, "end")
+            entry.insert(0, new_val)
+
+    entry.bind("<FocusOut>", on_focus_out)
+    variable.trace_add("write", on_variable_change)
+    return entry
+
+
 class MainWindowMixin:
     """메인 윈도우 UI 믹스인"""
 
@@ -46,7 +77,9 @@ class MainWindowMixin:
             ("📖 사용법", "help"),
             ("🗑️ 버리기", "discard"),
             ("🍖 먹기", "consume"),
+            ("🛒 사기", "consume2"),
             ("💰 팔기", "sell"),
+            ("⚡ 스킬", "skill_auto"),
             ("✨ 꾸러기", "inventory"),
             ("👁️ 벨리알", "belial"),
             ("📋 패치", "patch"),
@@ -93,9 +126,17 @@ class MainWindowMixin:
         self.content_frames["consume"] = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
         self.create_consume_content(self.content_frames["consume"])
 
+        # 아이템 사기 (먹기 V2)
+        self.content_frames["consume2"] = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
+        self.create_consume2_content(self.content_frames["consume2"])
+
         # 아이템 팔기
         self.content_frames["sell"] = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
         self.create_sell_content(self.content_frames["sell"])
+
+        # 스킬 자동 사용
+        self.content_frames["skill_auto"] = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
+        self.create_skill_auto_content(self.content_frames["skill_auto"])
 
         # 신화장난꾸러기
         self.content_frames["inventory"] = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
@@ -167,7 +208,9 @@ class MainWindowMixin:
         functions = [
             ("버리기", self.discard_trigger_key, self.discard_trigger_modifier, "discard_running", self.home_toggle_discard),
             ("먹기", self.consume_trigger_key, self.consume_trigger_modifier, "consume_running", self.home_toggle_consume),
+            ("사기", self.consume2_trigger_key, self.consume2_trigger_modifier, "consume2_running", self.home_toggle_consume2),
             ("팔기", self.sell_trigger_key, self.sell_trigger_modifier, "sell_running", self.home_toggle_sell),
+            ("스킬", self.skill_auto_trigger_key, self.skill_auto_trigger_modifier, "skill_auto_running", self.home_toggle_skill_auto),
             ("꾸러기", self.inv_trigger_key, self.inv_trigger_modifier, "inv_running", self.home_toggle_inv),
             ("벨리알", self.trigger_key, self.trigger_modifier, "is_running", self.home_toggle_belial),
         ]
@@ -215,6 +258,33 @@ class MainWindowMixin:
         ctk.CTkSlider(overlay_box, from_=0.3, to=1.0, variable=self.overlay_alpha,
                       command=self.update_overlay_alpha, height=15).pack(fill="x", pady=2)
 
+        # 크기
+        scale_frame = ctk.CTkFrame(overlay_box, fg_color="transparent")
+        scale_frame.pack(fill="x", pady=2)
+        ctk.CTkLabel(scale_frame, text="크기", font=ctk.CTkFont(family=DEFAULT_FONT, size=10)).pack(side="left")
+        self.scale_label = ctk.CTkLabel(scale_frame, text="100%", font=ctk.CTkFont(family=DEFAULT_FONT, size=10))
+        self.scale_label.pack(side="right")
+        ctk.CTkSlider(overlay_box, from_=0.7, to=1.5, variable=self.overlay_scale,
+                      command=self.update_overlay_scale, height=15).pack(fill="x", pady=2)
+
+        # 가로 크기
+        scale_w_frame = ctk.CTkFrame(overlay_box, fg_color="transparent")
+        scale_w_frame.pack(fill="x", pady=2)
+        ctk.CTkLabel(scale_w_frame, text="가로", font=ctk.CTkFont(family=DEFAULT_FONT, size=10)).pack(side="left")
+        self.scale_w_label = ctk.CTkLabel(scale_w_frame, text="100%", font=ctk.CTkFont(family=DEFAULT_FONT, size=10))
+        self.scale_w_label.pack(side="right")
+        ctk.CTkSlider(overlay_box, from_=0.7, to=1.5, variable=self.overlay_scale_w,
+                      command=self.update_overlay_scale_w, height=15).pack(fill="x", pady=2)
+
+        # 세로 크기
+        scale_h_frame = ctk.CTkFrame(overlay_box, fg_color="transparent")
+        scale_h_frame.pack(fill="x", pady=2)
+        ctk.CTkLabel(scale_h_frame, text="세로", font=ctk.CTkFont(family=DEFAULT_FONT, size=10)).pack(side="left")
+        self.scale_h_label = ctk.CTkLabel(scale_h_frame, text="100%", font=ctk.CTkFont(family=DEFAULT_FONT, size=10))
+        self.scale_h_label.pack(side="right")
+        ctk.CTkSlider(overlay_box, from_=0.7, to=1.5, variable=self.overlay_scale_h,
+                      command=self.update_overlay_scale_h, height=15).pack(fill="x", pady=2)
+
         # 배경색
         bg_frame = ctk.CTkFrame(overlay_box, fg_color="transparent")
         bg_frame.pack(fill="x", pady=2)
@@ -224,6 +294,14 @@ class MainWindowMixin:
         self.bg_color_preview.pack(side="left", padx=5)
         ctk.CTkButton(bg_frame, text="변경", width=40, height=20,
                       command=self.change_overlay_bg_color).pack(side="left")
+
+        # 빠른 버튼 UI
+        quick_btn_frame = ctk.CTkFrame(overlay_box, fg_color="transparent")
+        quick_btn_frame.pack(fill="x", pady=2)
+        ctk.CTkLabel(quick_btn_frame, text="빠른버튼", font=ctk.CTkFont(family=DEFAULT_FONT, size=10)).pack(side="left")
+        ctk.CTkSwitch(quick_btn_frame, text="", variable=self.quick_btn_enabled, width=40).pack(side="right")
+        ctk.CTkButton(quick_btn_frame, text="설정", width=40, height=20,
+                      command=self.open_detect_settings).pack(side="right", padx=5)
 
         # 하단 행: 설정관리 + 월드보스 + 알림
         row2 = ctk.CTkFrame(parent, fg_color="transparent")
@@ -371,13 +449,13 @@ class MainWindowMixin:
         tol_frame = ctk.CTkFrame(parent, fg_color="transparent")
         tol_frame.pack(fill="x", pady=2)
         ctk.CTkLabel(tol_frame, text="색상 오차:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
-        ctk.CTkEntry(tol_frame, textvariable=self.color_tolerance, width=50).pack(side="right")
+        create_numeric_entry(tol_frame, self.color_tolerance, width=50, is_float=False).pack(side="right")
 
         # 클릭 딜레이
         delay_frame = ctk.CTkFrame(parent, fg_color="transparent")
         delay_frame.pack(fill="x", pady=2)
         ctk.CTkLabel(delay_frame, text="딜레이(ms):", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
-        ctk.CTkEntry(delay_frame, textvariable=self.click_delay, width=50).pack(side="right")
+        create_numeric_entry(delay_frame, self.click_delay, width=50, is_float=True).pack(side="right")
 
         # 핫키
         key_frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -459,19 +537,21 @@ class MainWindowMixin:
         color_box = self.create_section_box(row1, "보존 색상", "🎨")
         color_box.master.pack(side="left", fill="both", expand=True, padx=2)
 
-        self.inv_color_preview = ctk.CTkFrame(color_box, width=50, height=30, fg_color="#000000")
+        self.inv_color_preview = ctk.CTkFrame(color_box, width=50, height=30, fg_color=self.inv_keep_color.get())
         self.inv_color_preview.pack(pady=5)
 
         color_row = ctk.CTkFrame(color_box, fg_color="transparent")
         color_row.pack(fill="x")
-        ctk.CTkEntry(color_row, textvariable=self.inv_keep_color, width=80).pack(side="left", padx=2)
+        inv_color_entry = ctk.CTkEntry(color_row, textvariable=self.inv_keep_color, width=80)
+        inv_color_entry.pack(side="left", padx=2)
+        inv_color_entry.bind("<KeyRelease>", lambda e: self.update_inv_color_preview())
         ctk.CTkButton(color_row, text="추출", width=50, height=28,
                       command=self.inv_pick_color, fg_color="#28a745").pack(side="left", padx=2)
 
         tol_row = ctk.CTkFrame(color_box, fg_color="transparent")
         tol_row.pack(fill="x", pady=5)
         ctk.CTkLabel(tol_row, text="허용오차:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
-        ctk.CTkEntry(tol_row, textvariable=self.inv_tolerance, width=50).pack(side="right")
+        create_numeric_entry(tol_row, self.inv_tolerance, width=50, is_float=False).pack(side="right")
 
         # 설정
         settings_box = self.create_section_box(row1, "설정", "⚙️")
@@ -490,10 +570,26 @@ class MainWindowMixin:
         ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
                         variable=self.inv_trigger_modifier, width=60, height=22).pack(side="right", padx=2)
 
-        delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
-        delay_row.pack(fill="x", pady=2)
-        ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
-        ctk.CTkEntry(delay_row, textvariable=self.inv_delay, width=50).pack(side="right")
+        # 딜레이 설정들
+        move_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        move_row.pack(fill="x", pady=1)
+        ctk.CTkLabel(move_row, text="이동속도:", font=ctk.CTkFont(family=DEFAULT_FONT, size=10)).pack(side="left")
+        create_numeric_entry(move_row, self.inv_move_duration, width=45, is_float=True).pack(side="right")
+
+        panel_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        panel_row.pack(fill="x", pady=1)
+        ctk.CTkLabel(panel_row, text="패널대기:", font=ctk.CTkFont(family=DEFAULT_FONT, size=10)).pack(side="left")
+        create_numeric_entry(panel_row, self.inv_panel_delay, width=45, is_float=True).pack(side="right")
+
+        space_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        space_row.pack(fill="x", pady=1)
+        ctk.CTkLabel(space_row, text="스페이스:", font=ctk.CTkFont(family=DEFAULT_FONT, size=10)).pack(side="left")
+        create_numeric_entry(space_row, self.inv_space_delay, width=45, is_float=True).pack(side="right")
+
+        click_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        click_row.pack(fill="x", pady=1)
+        ctk.CTkLabel(click_row, text="슬롯간격:", font=ctk.CTkFont(family=DEFAULT_FONT, size=10)).pack(side="left")
+        create_numeric_entry(click_row, self.inv_click_delay, width=45, is_float=True).pack(side="right")
 
         # 컨트롤
         ctrl_box = self.create_section_box(row1, "컨트롤", "🎮")
@@ -533,9 +629,9 @@ class MainWindowMixin:
         grid_frame = ctk.CTkFrame(inv_area_box, fg_color="transparent")
         grid_frame.pack(fill="x", pady=2)
         ctk.CTkLabel(grid_frame, text="열:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
-        ctk.CTkEntry(grid_frame, textvariable=self.inv_cols, width=40).pack(side="left", padx=2)
+        create_numeric_entry(grid_frame, self.inv_cols, width=40, is_float=False).pack(side="left", padx=2)
         ctk.CTkLabel(grid_frame, text="행:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left", padx=5)
-        ctk.CTkEntry(grid_frame, textvariable=self.inv_rows, width=40).pack(side="left", padx=2)
+        create_numeric_entry(grid_frame, self.inv_rows, width=40, is_float=False).pack(side="left", padx=2)
 
         # 설명 패널 영역
         desc_area_box = self.create_section_box(row2, "설명 패널 영역", "📋")
@@ -575,7 +671,7 @@ class MainWindowMixin:
         delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         delay_row.pack(fill="x", pady=5)
         ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
-        ctk.CTkEntry(delay_row, textvariable=self.discard_delay, width=60).pack(side="right")
+        create_numeric_entry(delay_row, self.discard_delay, width=60, is_float=True).pack(side="right")
 
         # 컨트롤
         ctrl_box = self.create_section_box(row1, "컨트롤", "🎮")
@@ -590,6 +686,10 @@ class MainWindowMixin:
         self.discard_status_label = ctk.CTkLabel(ctrl_box, text="⏸️ 대기 중",
                                                  font=ctk.CTkFont(family=DEFAULT_FONT, size=14))
         self.discard_status_label.pack(pady=10)
+
+        self.discard_progress_label = ctk.CTkLabel(ctrl_box, text="",
+                                                   font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
+        self.discard_progress_label.pack(pady=5)
 
         ctk.CTkLabel(ctrl_box, text="💡 마우스를 아이템 위에 놓고\n핫키를 누르면 Ctrl+클릭 반복",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#888888").pack(pady=5)
@@ -622,7 +722,7 @@ class MainWindowMixin:
         delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         delay_row.pack(fill="x", pady=5)
         ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
-        ctk.CTkEntry(delay_row, textvariable=self.consume_delay, width=60).pack(side="right")
+        create_numeric_entry(delay_row, self.consume_delay, width=60, is_float=True).pack(side="right")
 
         action_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         action_row.pack(fill="x", pady=5)
@@ -648,7 +748,72 @@ class MainWindowMixin:
                                                  font=ctk.CTkFont(family=DEFAULT_FONT, size=14))
         self.consume_status_label.pack(pady=10)
 
+        self.consume_progress_label = ctk.CTkLabel(ctrl_box, text="",
+                                                   font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
+        self.consume_progress_label.pack(pady=5)
+
         ctk.CTkLabel(ctrl_box, text="💡 선택한 키를 반복해서 누름",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#888888").pack(pady=5)
+
+    # =========================================
+    # 아이템 사기 컨텐츠 (먹기 V2)
+    # =========================================
+    def create_consume2_content(self, parent):
+        """아이템 사기 컨텐츠 생성 (먹기 V2)"""
+        row1 = ctk.CTkFrame(parent, fg_color="transparent")
+        row1.pack(fill="x", pady=5)
+
+        # 설정
+        settings_box = self.create_section_box(row1, "설정", "⚙️")
+        settings_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        key_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        key_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
+        ctk.CTkButton(key_row, text="변경", width=45, height=25,
+                      command=self.change_consume2_trigger_key).pack(side="right", padx=2)
+        self.consume2_key_display = ctk.CTkLabel(key_row, text=self.consume2_trigger_key.get().upper(),
+                                                 font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold"),
+                                                 text_color="#00ff00")
+        self.consume2_key_display.pack(side="right", padx=5)
+        ctk.CTkLabel(key_row, text="+", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="right")
+        ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
+                        variable=self.consume2_trigger_modifier, width=65, height=25).pack(side="right", padx=2)
+
+        delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        delay_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
+        create_numeric_entry(delay_row, self.consume2_delay, width=60, is_float=True).pack(side="right")
+
+        action_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        action_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(action_row, text="누를 키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
+        ctk.CTkButton(action_row, text="변경", width=45, height=25,
+                      command=self.change_consume2_action_key).pack(side="right", padx=2)
+        self.consume2_action_display = ctk.CTkLabel(action_row, text=self.consume2_action_key.get().upper(),
+                                                    font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold"),
+                                                    text_color="#ffaa00")
+        self.consume2_action_display.pack(side="right", padx=5)
+
+        # 컨트롤
+        ctrl_box = self.create_section_box(row1, "컨트롤", "🎮")
+        ctrl_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        self.consume2_start_btn = ctk.CTkButton(ctrl_box, text="▶ 시작", height=50,
+                                               command=self.toggle_consume2_running,
+                                               fg_color="#28a745",
+                                               font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"))
+        self.consume2_start_btn.pack(fill="x", pady=10)
+
+        self.consume2_status_label = ctk.CTkLabel(ctrl_box, text="⏸️ 대기 중",
+                                                 font=ctk.CTkFont(family=DEFAULT_FONT, size=14))
+        self.consume2_status_label.pack(pady=10)
+
+        self.consume2_progress_label = ctk.CTkLabel(ctrl_box, text="",
+                                                   font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
+        self.consume2_progress_label.pack(pady=5)
+
+        ctk.CTkLabel(ctrl_box, text="💡 상점에서 우클릭으로 아이템 구매",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#888888").pack(pady=5)
 
     # =========================================
@@ -679,7 +844,7 @@ class MainWindowMixin:
         delay_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         delay_row.pack(fill="x", pady=5)
         ctk.CTkLabel(delay_row, text="딜레이(ms):", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
-        ctk.CTkEntry(delay_row, textvariable=self.sell_delay, width=60).pack(side="right")
+        create_numeric_entry(delay_row, self.sell_delay, width=60, is_float=True).pack(side="right")
 
         # 컨트롤
         ctrl_box = self.create_section_box(row1, "컨트롤", "🎮")
@@ -695,8 +860,123 @@ class MainWindowMixin:
                                               font=ctk.CTkFont(family=DEFAULT_FONT, size=14))
         self.sell_status_label.pack(pady=10)
 
+        self.sell_progress_label = ctk.CTkLabel(ctrl_box, text="",
+                                                font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
+        self.sell_progress_label.pack(pady=5)
+
         ctk.CTkLabel(ctrl_box, text="💡 상점에서 우클릭 반복",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#888888").pack(pady=5)
+
+    # =========================================
+    # 스킬 자동 사용 컨텐츠
+    # =========================================
+    def create_skill_auto_content(self, parent):
+        """스킬 자동 사용 컨텐츠 생성"""
+        row1 = ctk.CTkFrame(parent, fg_color="transparent")
+        row1.pack(fill="x", pady=5)
+
+        # 설정
+        settings_box = self.create_section_box(row1, "설정", "⚙️")
+        settings_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        # 핫키 (시작/중지)
+        key_row = ctk.CTkFrame(settings_box, fg_color="transparent")
+        key_row.pack(fill="x", pady=5)
+        ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
+        ctk.CTkButton(key_row, text="변경", width=45, height=25,
+                      command=self.change_skill_auto_trigger_key).pack(side="right", padx=2)
+        self.skill_auto_key_display = ctk.CTkLabel(key_row, text=self.skill_auto_trigger_key.get().upper(),
+                                                   font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold"),
+                                                   text_color="#00ff00")
+        self.skill_auto_key_display.pack(side="right", padx=5)
+        ctk.CTkLabel(key_row, text="+", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="right")
+        ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
+                        variable=self.skill_auto_trigger_modifier, width=65, height=25).pack(side="right", padx=2)
+
+        # 컨트롤
+        ctrl_box = self.create_section_box(row1, "컨트롤", "🎮")
+        ctrl_box.master.pack(side="left", fill="both", expand=True, padx=2)
+
+        self.skill_auto_start_btn = ctk.CTkButton(ctrl_box, text="▶ 시작", height=50,
+                                                  command=self.toggle_skill_auto_running,
+                                                  fg_color="#28a745",
+                                                  font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"))
+        self.skill_auto_start_btn.pack(fill="x", pady=5)
+
+        self.skill_auto_status_label = ctk.CTkLabel(ctrl_box, text="⏸️ 대기 중",
+                                                    font=ctk.CTkFont(family=DEFAULT_FONT, size=14))
+        self.skill_auto_status_label.pack(pady=5)
+
+        self.skill_auto_pause_label = ctk.CTkLabel(ctrl_box, text="",
+                                                   font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
+        self.skill_auto_pause_label.pack(pady=2)
+
+        # === 스킬 슬롯 영역 ===
+        slot_box = self.create_section_box(parent, "스킬 슬롯 (쿨타임 초 입력)", "🎯")
+
+        # 위젯 저장용
+        self.skill_slot_widgets = []
+
+        # 슬롯 3줄 x 3열 배치 (총 9개)
+        for row_idx in range(3):
+            slot_row = ctk.CTkFrame(slot_box, fg_color="transparent")
+            slot_row.pack(fill="x", pady=5)
+
+            for col_idx in range(3):
+                slot_idx = row_idx * 3 + col_idx
+                slot = self.skill_slots[slot_idx]
+
+                # 슬롯 프레임
+                slot_frame = ctk.CTkFrame(slot_row, fg_color="#2b2b2b", corner_radius=8, width=150)
+                slot_frame.pack(side="left", fill="both", expand=True, padx=5)
+
+                # 체크박스 + 슬롯 번호
+                header = ctk.CTkFrame(slot_frame, fg_color="transparent")
+                header.pack(fill="x", padx=5, pady=5)
+                ctk.CTkCheckBox(header, text=f"슬롯 {slot_idx + 1}",
+                                variable=slot['enabled'],
+                                font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold")).pack(side="left")
+
+                # 키 설정
+                key_frame = ctk.CTkFrame(slot_frame, fg_color="transparent")
+                key_frame.pack(fill="x", padx=5, pady=2)
+                ctk.CTkLabel(key_frame, text="키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
+                key_label = ctk.CTkLabel(key_frame, text=slot['key'].get().upper(),
+                                         font=ctk.CTkFont(family=DEFAULT_FONT, size=11, weight="bold"),
+                                         text_color="#00aaff")
+                key_label.pack(side="left", padx=5)
+                ctk.CTkButton(key_frame, text="변경", width=40, height=22,
+                              command=lambda idx=slot_idx: self.change_skill_slot_key(idx)).pack(side="right")
+
+                # 쿨타임 입력
+                cd_frame = ctk.CTkFrame(slot_frame, fg_color="transparent")
+                cd_frame.pack(fill="x", padx=5, pady=5)
+                ctk.CTkLabel(cd_frame, text="쿨타임:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
+                ctk.CTkLabel(cd_frame, text="초", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="right")
+                create_numeric_entry(cd_frame, slot['cooldown'], width=50, is_float=True).pack(side="right", padx=5)
+
+                # 위젯 저장
+                self.skill_slot_widgets.append({
+                    'frame': slot_frame,
+                    'key_label': key_label
+                })
+
+        # 혼령사 물총 모드
+        honryeongsa_frame = ctk.CTkFrame(parent, fg_color="#3a2a2e", corner_radius=8)
+        honryeongsa_frame.pack(fill="x", pady=5, padx=5)
+        ctk.CTkCheckBox(honryeongsa_frame, text="🔫 혼령사 물총 모드",
+                        variable=self.honryeongsa_mode,
+                        font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold")).pack(side="left", padx=10, pady=8)
+        ctk.CTkLabel(honryeongsa_frame, text="스페이스바 누르는 동안 매크로 스페이스 입력 일시정지",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#aaaaaa").pack(side="left", padx=5)
+
+        # 도움말
+        help_frame = ctk.CTkFrame(parent, fg_color="#2a2a4e", corner_radius=8)
+        help_frame.pack(fill="x", pady=10, padx=5)
+        ctk.CTkLabel(help_frame, text="💡 Enter: 채팅할 때 pause / 다시 Enter: 재개",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#cccccc").pack(pady=5)
+        ctk.CTkLabel(help_frame, text="💡 긴급정지(F12): 모든 매크로 즉시 중지",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#cccccc").pack(pady=(0, 5))
 
     # =========================================
     # 사용법 컨텐츠
@@ -754,6 +1034,23 @@ class MainWindowMixin:
              "3. 사용할 아이템 위에 마우스 올리기\n"
              "4. 핫키 누르면 설정한 키 빠르게 반복\n"
              "5. 다시 핫키 누르면 멈춤"),
+            ("🛒 아이템 사기",
+             "상점에서 아이템을 빠르게 구매합니다.\n\n"
+             "1. [누를 키]에서 구매 키 설정 (기본: 우클릭)\n"
+             "2. [시작] 버튼으로 기능 켜기\n"
+             "3. 상점에서 살 아이템 위에 마우스 올리기\n"
+             "4. 핫키 누르면 설정한 키 빠르게 반복\n"
+             "5. 다시 핫키 누르면 멈춤\n\n"
+             "※ '먹기' 기능과 동일하지만 별도 탭으로 분리"),
+            ("⚡ 스킬 자동 사용",
+             "설정한 쿨타임에 따라 스킬 키를 자동으로 누릅니다.\n\n"
+             "1. 사용할 슬롯 체크박스 활성화\n"
+             "2. 각 슬롯에 누를 키와 쿨타임(초) 설정\n"
+             "3. [시작] 버튼으로 기능 켜기\n"
+             "4. 게임에서 핫키 누르면 자동 입력 시작\n"
+             "5. 다시 핫키 누르면 멈춤\n\n"
+             "※ Enter: 채팅할 때 일시정지 (다시 Enter로 재개)\n"
+             "※ 긴급정지로 모든 매크로 즉시 중지"),
             ("🛑 긴급 정지",
              "실행 중인 클릭/매크로를 즉시 멈춥니다.\n\n"
              "• 기본 키: F12\n"

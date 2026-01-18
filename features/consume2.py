@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-아이템 먹기 기능
+아이템 사기 기능 (먹기 V2)
 """
 
 import time
@@ -11,53 +11,53 @@ import win32api
 from constants import COLORS
 
 
-class ConsumeMixin:
-    """아이템 먹기 믹스인"""
+class Consume2Mixin:
+    """아이템 사기 믹스인 (먹기 V2)"""
 
-    def init_consume_vars(self):
-        """먹기 관련 변수 초기화"""
+    def init_consume2_vars(self):
+        """사기 관련 변수 초기화"""
         import customtkinter as ctk
 
-        self.consume_running = False
-        self.consume_active = False
-        self.consume_paused = False  # Enter로 일시정지
-        self.consume_trigger_key = ctk.StringVar(value="mouse5")
-        self.consume_trigger_modifier = ctk.StringVar(value="없음")
-        self.consume_last_trigger_time = 0
-        self.consume_delay = ctk.DoubleVar(value=0.01)
-        self.consume_input_type = ctk.StringVar(value="우클릭")
-        self.consume_action_key = ctk.StringVar(value="우클릭")
+        self.consume2_running = False
+        self.consume2_active = False
+        self.consume2_paused = False
+        self.consume2_trigger_key = ctk.StringVar(value="f5")
+        self.consume2_trigger_modifier = ctk.StringVar(value="없음")
+        self.consume2_last_trigger_time = 0
+        self.consume2_delay = ctk.DoubleVar(value=0.01)
+        self.consume2_input_type = ctk.StringVar(value="우클릭")
+        self.consume2_action_key = ctk.StringVar(value="우클릭")
 
-    def toggle_consume_running(self):
-        """아이템 먹기 시작/중지"""
-        self.consume_running = not self.consume_running
-        if self.consume_running:
-            self.consume_start_btn.configure(text="⏹️ 중지", fg_color=COLORS["danger"], hover_color=COLORS["danger_hover"])
-            self.consume_status_label.configure(text=f"🔴 [{self.consume_trigger_key.get().upper()}] 키로 시작")
+    def toggle_consume2_running(self):
+        """아이템 사기 시작/중지"""
+        self.consume2_running = not self.consume2_running
+        if self.consume2_running:
+            self.consume2_start_btn.configure(text="⏹️ 중지", fg_color=COLORS["danger"], hover_color=COLORS["danger_hover"])
+            self.consume2_status_label.configure(text=f"🔴 [{self.consume2_trigger_key.get().upper()}] 키로 시작")
             self.update_idletasks()
         else:
-            self.consume_active = False
-            self.consume_paused = False
-            self.consume_start_btn.configure(text="▶️ 시작", fg_color=COLORS["success"], hover_color=COLORS["success_hover"])
-            self.consume_status_label.configure(text="⏸️ 대기 중")
-            self.consume_progress_label.configure(text="")
+            self.consume2_active = False
+            self.consume2_paused = False
+            self.consume2_start_btn.configure(text="▶️ 시작", fg_color=COLORS["success"], hover_color=COLORS["success_hover"])
+            self.consume2_status_label.configure(text="⏸️ 대기 중")
+            self.consume2_progress_label.configure(text="")
             self.update_idletasks()
         self.update_home_status_now()
 
-    def run_consume_loop(self):
-        """먹기 루프 실행 - 선택한 입력 반복"""
+    def run_consume2_loop(self):
+        """사기 루프 실행 - 선택한 입력 반복"""
         import win32api
         import win32con
 
-        delay = self.consume_delay.get()
-        action_key = self.consume_action_key.get()
+        delay = self.consume2_delay.get()
+        action_key = self.consume2_action_key.get()
 
-        self.after(0, lambda: self.consume_status_label.configure(text=f"🍖 먹는 중... ({action_key})"))
+        self.after(0, lambda: self.consume2_status_label.configure(text=f"🛒 사는 중... ({action_key})"))
 
         consumed = 0
-        while self.consume_active and self.consume_running:
+        while self.consume2_active and self.consume2_running:
             # Enter로 일시정지된 상태
-            if self.consume_paused:
+            if self.consume2_paused:
                 time.sleep(0.01)
                 continue
 
@@ -88,53 +88,53 @@ class ConsumeMixin:
 
             # 진행상황 (100개마다)
             if consumed % 100 == 0:
-                self.after(0, lambda c=consumed: self.consume_progress_label.configure(text=f"{c}회"))
+                self.after(0, lambda c=consumed: self.consume2_progress_label.configure(text=f"{c}회"))
 
-        self.consume_active = False
-        self.after(0, lambda: self.consume_status_label.configure(text="⏹️ 중지됨"))
-        self.after(0, lambda c=consumed: self.consume_progress_label.configure(text=f"총 {c}회 입력"))
+        self.consume2_active = False
+        self.after(0, lambda: self.consume2_status_label.configure(text="⏹️ 중지됨"))
+        self.after(0, lambda c=consumed: self.consume2_progress_label.configure(text=f"총 {c}회 입력"))
 
-    def on_consume_trigger_key(self, event):
-        """먹기 트리거 키 핸들러"""
+    def on_consume2_enter_pause(self, event):
+        """Enter 키로 사기 pause/resume 토글"""
+        if not self.consume2_running or not self.consume2_active:
+            return
+
+        self.consume2_paused = not self.consume2_paused
+        if self.consume2_paused:
+            self.after(0, lambda: self.consume2_status_label.configure(text="⏸️ PAUSED (Enter로 재개)"))
+        else:
+            action_key = self.consume2_action_key.get()
+            self.after(0, lambda: self.consume2_status_label.configure(text=f"🛒 사는 중... ({action_key})"))
+
+    def on_consume2_trigger_key(self, event):
+        """사기 트리거 키 핸들러"""
         import threading
 
-        if not self.consume_running:
+        if not self.consume2_running:
             return
 
         if self.is_chatting():
             return
 
-        if not self.check_modifier(self.consume_trigger_modifier.get()):
+        if not self.check_modifier(self.consume2_trigger_modifier.get()):
             return
 
         current_time = time.time()
-        if current_time - self.consume_last_trigger_time < 0.3:
+        if current_time - self.consume2_last_trigger_time < 0.3:
             return
-        self.consume_last_trigger_time = current_time
+        self.consume2_last_trigger_time = current_time
 
-        if self.consume_active:
-            self.consume_active = False
-            self.consume_paused = False
-            self.after(0, lambda: self.consume_status_label.configure(text="⏹️ 중지됨"))
+        if self.consume2_active:
+            self.consume2_active = False
+            self.consume2_paused = False
+            self.after(0, lambda: self.consume2_status_label.configure(text="⏹️ 중지됨"))
         else:
-            self.consume_active = True
-            self.consume_paused = False
-            threading.Thread(target=self.run_consume_loop, daemon=True).start()
+            self.consume2_active = True
+            self.consume2_paused = False
+            threading.Thread(target=self.run_consume2_loop, daemon=True).start()
 
-    def on_consume_enter_pause(self, event):
-        """Enter 키로 먹기 pause/resume 토글"""
-        if not self.consume_running or not self.consume_active:
-            return
-
-        self.consume_paused = not self.consume_paused
-        if self.consume_paused:
-            self.after(0, lambda: self.consume_status_label.configure(text="⏸️ PAUSED (Enter로 재개)"))
-        else:
-            action_key = self.consume_action_key.get()
-            self.after(0, lambda: self.consume_status_label.configure(text=f"🍖 먹는 중... ({action_key})"))
-
-    def change_consume_trigger_key(self):
-        """먹기 핫키 변경"""
+    def change_consume2_trigger_key(self):
+        """사기 핫키 변경"""
         import customtkinter as ctk
         import threading
         import win32api
@@ -160,9 +160,15 @@ class ConsumeMixin:
                     self.after(100, lambda: messagebox.showwarning("핫키 충돌", conflict_msg))
                     dialog.destroy()
                     return
-                self.consume_trigger_key.set(event.name)
-                if hasattr(self, 'consume_key_display'):
-                    self.consume_key_display.configure(text=event.name.upper())
+                self.consume2_trigger_key.set(event.name)
+                if hasattr(self, 'consume2_key_display'):
+                    self.consume2_key_display.configure(text=event.name.upper())
+                # 오버레이 핫키 라벨 즉시 업데이트
+                if hasattr(self, 'overlay_hotkey_labels') and 'consume2_running' in self.overlay_hotkey_labels:
+                    mod = self.consume2_trigger_modifier.get()
+                    key = event.name.upper()
+                    hotkey_text = f"{mod}+{key}" if mod != "없음" else key
+                    self.overlay_hotkey_labels['consume2_running'].configure(text=hotkey_text)
                 self.setup_hotkey()
                 dialog.destroy()
 
@@ -186,8 +192,8 @@ class ConsumeMixin:
             while dialog_active[0]:
                 if win32api.GetAsyncKeyState(0x05) & 0x8000:
                     dialog_active[0] = False
-                    self.after(0, lambda: self.consume_trigger_key.set("mouse4"))
-                    self.after(0, lambda: self.consume_key_display.configure(text="MOUSE4") if hasattr(self, 'consume_key_display') else None)
+                    self.after(0, lambda: self.consume2_trigger_key.set("mouse4"))
+                    self.after(0, lambda: self.consume2_key_display.configure(text="MOUSE4") if hasattr(self, 'consume2_key_display') else None)
                     # 버튼 떼어질 때까지 대기
                     while win32api.GetAsyncKeyState(0x05) & 0x8000:
                         time.sleep(0.01)
@@ -197,8 +203,8 @@ class ConsumeMixin:
                     break
                 if win32api.GetAsyncKeyState(0x06) & 0x8000:
                     dialog_active[0] = False
-                    self.after(0, lambda: self.consume_trigger_key.set("mouse5"))
-                    self.after(0, lambda: self.consume_key_display.configure(text="MOUSE5") if hasattr(self, 'consume_key_display') else None)
+                    self.after(0, lambda: self.consume2_trigger_key.set("mouse5"))
+                    self.after(0, lambda: self.consume2_key_display.configure(text="MOUSE5") if hasattr(self, 'consume2_key_display') else None)
                     # 버튼 떼어질 때까지 대기
                     while win32api.GetAsyncKeyState(0x06) & 0x8000:
                         time.sleep(0.01)
@@ -218,8 +224,8 @@ class ConsumeMixin:
 
         dialog.protocol("WM_DELETE_WINDOW", on_close)
 
-    def change_consume_action_key(self):
-        """아이템 먹기 - 누를 키 변경 (마우스 클릭 포함)"""
+    def change_consume2_action_key(self):
+        """아이템 사기 - 누를 키 변경 (마우스 클릭 포함)"""
         import customtkinter as ctk
         import threading
 
@@ -239,10 +245,10 @@ class ConsumeMixin:
 
         def update_action_key(key_name):
             """누를 키 업데이트"""
-            self.consume_action_key.set(key_name)
+            self.consume2_action_key.set(key_name)
             display_text = key_name.upper()
-            if hasattr(self, 'consume_action_display'):
-                self.consume_action_display.configure(text=display_text)
+            if hasattr(self, 'consume2_action_display'):
+                self.consume2_action_display.configure(text=display_text)
 
         def on_key(event):
             if dialog_active[0]:

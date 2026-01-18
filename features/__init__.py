@@ -8,6 +8,8 @@ from .inventory import InventoryMixin
 from .discard import DiscardMixin
 from .sell import SellMixin
 from .consume import ConsumeMixin
+from .consume2 import Consume2Mixin
+from .skill_auto import SkillAutoMixin
 
 __all__ = [
     'BelialMixin',
@@ -15,4 +17,6 @@ __all__ = [
     'DiscardMixin',
     'SellMixin',
     'ConsumeMixin',
+    'Consume2Mixin',
+    'SkillAutoMixin',
 ]

@@ -44,6 +44,7 @@ class InventoryMixin:
         self.inv_panel_delay = ctk.DoubleVar(value=0.08)
         self.inv_space_delay = ctk.DoubleVar(value=0.05)
         self.inv_click_delay = ctk.DoubleVar(value=0.01)
+        self.inv_area_overlay = None
 
     def toggle_inv_running(self):
         """인벤토리 정리 시작/중지"""
@@ -60,28 +61,37 @@ class InventoryMixin:
         self.update_home_status_now()
 
     def get_inventory_positions(self):
-        """인벤토리 슬롯 중앙 좌표 계산"""
-        x1 = self.inv_x1.get()
-        y1 = self.inv_y1.get()
-        x2 = self.inv_x2.get()
-        y2 = self.inv_y2.get()
+        """인벤토리 셀 좌표 목록 반환 (뱀패턴: 123,654,789) - (x, y, col) 튜플"""
+        positions = []
+        x1, y1 = self.inv_x1.get(), self.inv_y1.get()
+        x2, y2 = self.inv_x2.get(), self.inv_y2.get()
         cols = self.inv_cols.get()
         rows = self.inv_rows.get()
 
-        positions = []
-        cell_w = (x2 - x1) / cols
-        cell_h = (y2 - y1) / rows
+        width = x2 - x1
+        height = y2 - y1
+        cell_w = width / cols
+        cell_h = height / rows
 
         for row in range(rows):
-            for col in range(cols):
-                cx = int(x1 + cell_w * (col + 0.5))
-                cy = int(y1 + cell_h * (row + 0.5))
-                positions.append((cx, cy, col))
+            if row % 2 == 0:
+                # 짝수 줄: 왼쪽 → 오른쪽
+                col_range = range(cols)
+            else:
+                # 홀수 줄: 오른쪽 → 왼쪽
+                col_range = range(cols - 1, -1, -1)
+
+            for col in col_range:
+                x = int(x1 + col * cell_w + cell_w / 2)
+                y = int(y1 + row * cell_h + cell_h / 2)
+                positions.append((x, y, col))
 
         return positions
 
     def run_inventory_cleanup(self):
-        """인벤토리 정리 실행"""
+        """인벤토리 정리 - 1단계: 스캔+즐겨찾기, 2단계: 나머지 버리기"""
+        import win32con
+
         def cleanup_loop():
             positions = self.get_inventory_positions()
             keep_color = self.inv_keep_color.get()
@@ -105,49 +115,125 @@ class InventoryMixin:
             desc_y1 = self.inv_desc_y1.get()
             desc_x2 = self.inv_desc_x2.get()
             desc_y2 = self.inv_desc_y2.get()
+            desc_width = desc_x2 - desc_x1
+            desc_height = desc_y2 - desc_y1
 
-            for idx, (sx, sy, col_idx) in enumerate(positions):
+            # 딜레이 값
+            move_duration = self.inv_move_duration.get()
+            panel_delay = self.inv_panel_delay.get()
+            space_delay = self.inv_space_delay.get()
+            click_delay = self.inv_click_delay.get()
+
+            # 즐겨찾기된 슬롯 저장
+            favorite_slots = set()
+
+            # ========== 1단계: 스캔 + 즐겨찾기 ==========
+            self.after(0, lambda: self.inv_status_label.configure(text="🔍 1단계: 스캔 중..."))
+
+            # 첫 번째 슬롯에서 0.3초 호버링 (게임 초기 인식)
+            if positions:
+                first_x, first_y, first_col = positions[0]
+                self.smooth_move_to(first_x, first_y, duration=move_duration)
+                time.sleep(0.3)
+
+            with mss.mss() as sct:
+                for i, (x, y, col) in enumerate(positions):
+                    if not self.inv_cleanup_active:
+                        break
+
+                    # 부드럽게 슬롯으로 이동
+                    self.smooth_move_to(x, y, duration=move_duration)
+                    time.sleep(panel_delay)
+
+                    # 해당 슬롯의 설명 패널 X 오프셋 계산
+                    x_offset = int(col * cell_w)
+                    current_desc_x1 = desc_x1 + x_offset
+
+                    try:
+                        # 설명 패널 영역 캡처
+                        monitor = {
+                            "top": desc_y1,
+                            "left": current_desc_x1,
+                            "width": desc_width,
+                            "height": desc_height
+                        }
+                        screenshot = sct.grab(monitor)
+
+                        # numpy 초고속 벡터 스캔
+                        img_array = np.frombuffer(screenshot.raw, dtype=np.uint8)
+                        img_array = img_array.reshape((desc_height, desc_width, 4))
+
+                        b_diff = np.abs(img_array[:, :, 0].astype(np.int16) - target_b)
+                        g_diff = np.abs(img_array[:, :, 1].astype(np.int16) - target_g)
+                        r_diff = np.abs(img_array[:, :, 2].astype(np.int16) - target_r)
+
+                        found_keep_color = np.any((r_diff <= tol) & (g_diff <= tol) & (b_diff <= tol))
+
+                        # 신화장난꾸러기 발견! 스페이스바 2번 (즐겨찾기)
+                        if found_keep_color:
+                            favorite_slots.add(i)
+                            keyboard.press_and_release('space')
+                            time.sleep(space_delay)
+                            keyboard.press_and_release('space')
+                            time.sleep(space_delay)
+                            self.after(0, lambda idx=i: self.inv_progress_label.configure(
+                                text=f"⭐ 즐겨찾기: 슬롯 {idx+1}"))
+
+                    except Exception as e:
+                        print(f"Scan error: {e}")
+
+                    # 진행 상황 (3개마다)
+                    if i % 3 == 0:
+                        self.after(0, lambda idx=i, t=total, f=len(favorite_slots): self.inv_progress_label.configure(
+                            text=f"스캔: {idx+1}/{t} (즐겨찾기: {f})"))
+
+            if not self.inv_cleanup_active:
+                self.after(0, lambda: self.inv_status_label.configure(text="⏹️ 중지됨"))
+                self.inv_cleanup_active = False
+                return
+
+            # ========== 2단계: 즐겨찾기 안된 것들 빠르게 버리기 ==========
+            self.after(0, lambda f=len(favorite_slots): self.inv_status_label.configure(
+                text=f"🗑️ 2단계: 버리기... (보존: {f}개)"))
+
+            discarded = 0
+            for i, (x, y, col) in enumerate(positions):
                 if not self.inv_cleanup_active:
-                    self.after(0, lambda: self.inv_status_label.configure(text="⏸️ 중지됨"))
-                    return
+                    break
 
-                self.after(0, lambda i=idx: self.inv_progress_label.configure(text=f"스캔 중: {i+1}/{total}"))
+                # 즐겨찾기된 슬롯은 스킵
+                if i in favorite_slots:
+                    continue
 
-                self.smooth_move_to(sx, sy, duration=self.inv_move_duration.get())
-                time.sleep(self.inv_panel_delay.get())
+                # 빠르게 이동 (텔레포트)
+                win32api.SetCursorPos((x, y))
+                time.sleep(0.02)
 
-                x_offset = int(col_idx * cell_w)
-                scan_x1 = desc_x1 + x_offset
-                scan_x2 = desc_x2 + x_offset
+                # Ctrl + 클릭으로 버리기
+                win32api.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
+                win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+                win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+                win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
+                discarded += 1
+                time.sleep(click_delay)
 
-                try:
-                    with mss.mss() as sct:
-                        monitor = {"top": desc_y1, "left": scan_x1, "width": scan_x2 - scan_x1, "height": desc_y2 - desc_y1}
-                        screenshot = np.array(sct.grab(monitor))
+                if i % 5 == 0:
+                    self.after(0, lambda d=discarded: self.inv_progress_label.configure(
+                        text=f"버리는 중... ({d}개)"))
 
-                    r_diff = np.abs(screenshot[:, :, 2].astype(np.int16) - target_r)
-                    g_diff = np.abs(screenshot[:, :, 1].astype(np.int16) - target_g)
-                    b_diff = np.abs(screenshot[:, :, 0].astype(np.int16) - target_b)
-                    matches = (r_diff <= tol) & (g_diff <= tol) & (b_diff <= tol)
-
-                    if np.any(matches):
-                        keyboard.press_and_release('space')
-                        time.sleep(self.inv_space_delay.get())
-
-                except Exception as e:
-                    print(f"Scan error: {e}")
-
-                time.sleep(self.inv_click_delay.get())
-
-            self.after(0, lambda: self.inv_status_label.configure(text="✅ 완료!"))
-            self.after(0, lambda: self.inv_progress_label.configure(text=""))
             self.inv_cleanup_active = False
+            self.after(0, lambda: self.inv_status_label.configure(text="✅ 완료!"))
+            self.after(0, lambda f=len(favorite_slots), d=discarded: self.inv_progress_label.configure(
+                text=f"⭐ 보존: {f}개 | 🗑️ 버림: {d}개"))
 
         threading.Thread(target=cleanup_loop, daemon=True).start()
 
     def on_inv_trigger_key(self, event):
         """인벤토리 정리 트리거 키 핸들러 - 토글 방식"""
         if not self.inv_running:
+            return
+
+        if self.is_chatting():
             return
 
         if not self.check_modifier(self.inv_trigger_modifier.get()):
@@ -169,6 +255,9 @@ class InventoryMixin:
     def change_inv_trigger_key(self):
         """인벤토리 핫키 변경"""
         import customtkinter as ctk
+        import threading
+        import time
+        import win32api
 
         dialog = ctk.CTkToplevel(self)
         dialog.title("핫키 설정")
@@ -176,7 +265,7 @@ class InventoryMixin:
         dialog.transient(self)
         dialog.grab_set()
 
-        ctk.CTkLabel(dialog, text="새 핫키를 누르세요...",
+        ctk.CTkLabel(dialog, text="새 핫키를 누르세요...\n(마우스 4/5번도 가능)",
                      font=ctk.CTkFont(size=14)).pack(pady=20)
 
         dialog_active = [True]
@@ -184,13 +273,62 @@ class InventoryMixin:
         def on_key(event):
             if dialog_active[0]:
                 dialog_active[0] = False
+                # 충돌 체크 - 충돌 시 설정 안 함
+                conflict_msg = self.check_hotkey_conflict(event.name)
+                if conflict_msg:
+                    from tkinter import messagebox
+                    self.after(100, lambda: messagebox.showwarning("핫키 충돌", conflict_msg))
+                    dialog.destroy()
+                    return
                 self.inv_trigger_key.set(event.name)
                 if hasattr(self, 'inv_key_display'):
                     self.inv_key_display.configure(text=event.name.upper())
                 self.setup_hotkey()
                 dialog.destroy()
 
-        keyboard.on_press(on_key, suppress=False)
+        # 딜레이 후 키 감지 시작 (버튼 클릭 잔여 입력 방지)
+        def start_key_detection():
+            time.sleep(0.3)
+            if dialog_active[0]:
+                keyboard.on_press(on_key, suppress=False)
+
+        threading.Thread(target=start_key_detection, daemon=True).start()
+
+        # 마우스 버튼 폴링
+        def poll_mouse():
+            time.sleep(0.3)  # 딜레이
+            # 모든 버튼 떼어질 때까지 대기
+            while dialog_active[0]:
+                if not (win32api.GetAsyncKeyState(0x05) & 0x8000) and not (win32api.GetAsyncKeyState(0x06) & 0x8000):
+                    break
+                time.sleep(0.01)
+            time.sleep(0.1)  # 추가 안정화 딜레이
+            while dialog_active[0]:
+                if win32api.GetAsyncKeyState(0x05) & 0x8000:
+                    dialog_active[0] = False
+                    self.after(0, lambda: self.inv_trigger_key.set("mouse4"))
+                    self.after(0, lambda: self.inv_key_display.configure(text="MOUSE4") if hasattr(self, 'inv_key_display') else None)
+                    # 버튼 떼어질 때까지 대기
+                    while win32api.GetAsyncKeyState(0x05) & 0x8000:
+                        time.sleep(0.01)
+                    time.sleep(0.1)
+                    self.after(0, self.setup_hotkey)
+                    self.after(0, dialog.destroy)
+                    break
+                if win32api.GetAsyncKeyState(0x06) & 0x8000:
+                    dialog_active[0] = False
+                    self.after(0, lambda: self.inv_trigger_key.set("mouse5"))
+                    self.after(0, lambda: self.inv_key_display.configure(text="MOUSE5") if hasattr(self, 'inv_key_display') else None)
+                    # 버튼 떼어질 때까지 대기
+                    while win32api.GetAsyncKeyState(0x06) & 0x8000:
+                        time.sleep(0.01)
+                    time.sleep(0.1)
+                    self.after(0, self.setup_hotkey)
+                    self.after(0, dialog.destroy)
+                    break
+                time.sleep(0.01)
+
+        threading.Thread(target=poll_mouse, daemon=True).start()
 
         def on_close():
             dialog_active[0] = False
@@ -201,136 +339,163 @@ class InventoryMixin:
         dialog.protocol("WM_DELETE_WINDOW", on_close)
 
     def select_inv_area(self):
-        """인벤토리 영역 선택"""
+        """인벤토리 영역 드래그 선택"""
         import tkinter as tk
-        from tkinter import messagebox
 
-        messagebox.showinfo("영역 선택", "인벤토리 영역을 드래그하세요")
+        self.inv_status_label.configure(text="🖱️ 드래그로 영역 선택...")
 
-        overlay = tk.Toplevel()
+        overlay = tk.Toplevel(self)
         overlay.attributes('-fullscreen', True)
-        overlay.attributes('-alpha', 0.3)
         overlay.attributes('-topmost', True)
+        overlay.attributes('-alpha', 0.3)
         overlay.configure(bg='gray')
+        overlay.config(cursor='cross')
 
         canvas = tk.Canvas(overlay, highlightthickness=0, bg='gray')
-        canvas.pack(fill='both', expand=True)
+        canvas.pack(fill=tk.BOTH, expand=True)
 
-        start_pos = [0, 0]
-        rect = [None]
+        start_x, start_y = None, None
+        rect_id = None
 
         def on_press(event):
-            start_pos[0] = event.x
-            start_pos[1] = event.y
+            nonlocal start_x, start_y, rect_id
+            start_x, start_y = event.x_root, event.y_root
+            if rect_id:
+                canvas.delete(rect_id)
+            rect_id = canvas.create_rectangle(event.x, event.y, event.x, event.y,
+                                               outline='red', width=3, fill='blue', stipple='gray50')
 
         def on_drag(event):
-            if rect[0]:
-                canvas.delete(rect[0])
-            rect[0] = canvas.create_rectangle(start_pos[0], start_pos[1], event.x, event.y,
-                                               outline='red', width=3)
+            nonlocal rect_id
+            if start_x is not None and rect_id:
+                x1 = start_x - overlay.winfo_rootx()
+                y1 = start_y - overlay.winfo_rooty()
+                canvas.coords(rect_id, x1, y1, event.x, event.y)
 
         def on_release(event):
-            x1, y1 = min(start_pos[0], event.x), min(start_pos[1], event.y)
-            x2, y2 = max(start_pos[0], event.x), max(start_pos[1], event.y)
-            self.inv_x1.set(x1)
-            self.inv_y1.set(y1)
-            self.inv_x2.set(x2)
-            self.inv_y2.set(y2)
+            if start_x is not None:
+                end_x, end_y = event.x_root, event.y_root
+                x1, x2 = min(start_x, end_x), max(start_x, end_x)
+                y1, y2 = min(start_y, end_y), max(start_y, end_y)
+
+                self.inv_x1.set(x1)
+                self.inv_y1.set(y1)
+                self.inv_x2.set(x2)
+                self.inv_y2.set(y2)
+
+                self.inv_status_label.configure(text=f"✅ 영역 설정 완료")
+                overlay.destroy()
+                self.show_inv_area_overlay()
+
+        def on_escape(event):
+            self.inv_status_label.configure(text="⏸️ 대기 중")
             overlay.destroy()
 
-        canvas.bind('<Button-1>', on_press)
+        canvas.bind('<ButtonPress-1>', on_press)
         canvas.bind('<B1-Motion>', on_drag)
         canvas.bind('<ButtonRelease-1>', on_release)
-        canvas.bind('<Escape>', lambda e: overlay.destroy())
+        overlay.bind('<Escape>', on_escape)
+        overlay.focus_set()
 
     def show_inv_area_overlay(self):
-        """인벤토리 영역 미리보기"""
+        """인벤토리 영역 오버레이 토글"""
         import tkinter as tk
+
+        if hasattr(self, 'inv_area_overlay') and self.inv_area_overlay:
+            try:
+                self.inv_area_overlay.destroy()
+            except:
+                pass
+            self.inv_area_overlay = None
+            return
 
         x1, y1 = self.inv_x1.get(), self.inv_y1.get()
         x2, y2 = self.inv_x2.get(), self.inv_y2.get()
+        width, height = x2 - x1, y2 - y1
 
-        overlay = tk.Toplevel()
-        overlay.geometry(f"{x2-x1}x{y2-y1}+{x1}+{y1}")
-        overlay.overrideredirect(True)
-        overlay.attributes('-alpha', 0.3)
-        overlay.attributes('-topmost', True)
-        overlay.configure(bg='blue')
+        if width <= 0 or height <= 0:
+            return
 
-        tk.Label(overlay, text="인벤토리 영역", bg='blue', fg='white').pack(expand=True)
+        self.inv_area_overlay = tk.Toplevel(self)
+        self.inv_area_overlay.overrideredirect(True)
+        self.inv_area_overlay.attributes('-topmost', True)
+        self.inv_area_overlay.attributes('-transparentcolor', 'white')
+        self.inv_area_overlay.geometry(f'{width}x{height}+{x1}+{y1}')
 
-        overlay.after(2000, overlay.destroy)
+        canvas = tk.Canvas(self.inv_area_overlay, width=width, height=height, bg='white', highlightthickness=0)
+        canvas.pack()
+        canvas.create_rectangle(2, 2, width-2, height-2, outline='#ff6600', width=3)
+        canvas.bind('<Button-1>', lambda e: self.show_inv_area_overlay())
 
     def select_desc_area(self):
-        """설명 패널 영역 선택"""
+        """설명 패널 영역 드래그 선택"""
         import tkinter as tk
-        from tkinter import messagebox
 
-        messagebox.showinfo("영역 선택", "설명 패널 영역을 드래그하세요")
+        self.inv_status_label.configure(text="🖱️ 설명 패널 영역 드래그...")
 
-        overlay = tk.Toplevel()
+        overlay = tk.Toplevel(self)
         overlay.attributes('-fullscreen', True)
-        overlay.attributes('-alpha', 0.3)
         overlay.attributes('-topmost', True)
+        overlay.attributes('-alpha', 0.3)
         overlay.configure(bg='gray')
+        overlay.config(cursor='cross')
 
         canvas = tk.Canvas(overlay, highlightthickness=0, bg='gray')
-        canvas.pack(fill='both', expand=True)
+        canvas.pack(fill=tk.BOTH, expand=True)
 
-        start_pos = [0, 0]
-        rect = [None]
+        start_x, start_y = None, None
+        rect_id = None
 
         def on_press(event):
-            start_pos[0] = event.x
-            start_pos[1] = event.y
+            nonlocal start_x, start_y, rect_id
+            start_x, start_y = event.x_root, event.y_root
+            if rect_id:
+                canvas.delete(rect_id)
+            rect_id = canvas.create_rectangle(event.x, event.y, event.x, event.y,
+                                               outline='green', width=3, fill='green', stipple='gray50')
 
         def on_drag(event):
-            if rect[0]:
-                canvas.delete(rect[0])
-            rect[0] = canvas.create_rectangle(start_pos[0], start_pos[1], event.x, event.y,
-                                               outline='yellow', width=3)
+            nonlocal rect_id
+            if start_x is not None and rect_id:
+                x1 = start_x - overlay.winfo_rootx()
+                y1 = start_y - overlay.winfo_rooty()
+                canvas.coords(rect_id, x1, y1, event.x, event.y)
 
         def on_release(event):
-            x1, y1 = min(start_pos[0], event.x), min(start_pos[1], event.y)
-            x2, y2 = max(start_pos[0], event.x), max(start_pos[1], event.y)
-            self.inv_desc_x1.set(x1)
-            self.inv_desc_y1.set(y1)
-            self.inv_desc_x2.set(x2)
-            self.inv_desc_y2.set(y2)
+            if start_x is not None:
+                end_x, end_y = event.x_root, event.y_root
+                x1, x2 = min(start_x, end_x), max(start_x, end_x)
+                y1, y2 = min(start_y, end_y), max(start_y, end_y)
+
+                self.inv_desc_x1.set(x1)
+                self.inv_desc_y1.set(y1)
+                self.inv_desc_x2.set(x2)
+                self.inv_desc_y2.set(y2)
+
+                self.inv_status_label.configure(text=f"✅ 설명 패널 영역 설정 완료")
+                overlay.destroy()
+
+        def on_escape(event):
+            self.inv_status_label.configure(text="⏸️ 대기 중")
             overlay.destroy()
 
-        canvas.bind('<Button-1>', on_press)
+        canvas.bind('<ButtonPress-1>', on_press)
         canvas.bind('<B1-Motion>', on_drag)
         canvas.bind('<ButtonRelease-1>', on_release)
-        canvas.bind('<Escape>', lambda e: overlay.destroy())
+        overlay.bind('<Escape>', on_escape)
+        overlay.focus_set()
+
+    def update_inv_color_preview(self, event=None):
+        """인벤토리 탭 색상 미리보기 업데이트"""
+        try:
+            color = self.inv_keep_color.get()
+            if self.validate_hex(color):
+                self.inv_color_preview.configure(fg_color=color)
+        except:
+            pass
 
     def inv_pick_color(self):
-        """인벤토리 보존 색상 추출"""
-        if hasattr(self, 'picker_status'):
-            self.picker_status.configure(text="클릭으로 색상 추출")
-
-        def on_click():
-            x, y = win32api.GetCursorPos()
-            import mss
-            from PIL import Image
-            with mss.mss() as sct:
-                monitor = {"top": y, "left": x, "width": 1, "height": 1}
-                screenshot = sct.grab(monitor)
-                img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
-                r, g, b = img.getpixel((0, 0))
-                hex_color = f"#{r:02X}{g:02X}{b:02X}"
-                self.inv_keep_color.set(hex_color)
-                if hasattr(self, 'inv_color_preview'):
-                    self.inv_color_preview.configure(fg_color=hex_color)
-
-        def wait_for_click():
-            import win32con
-            while True:
-                if win32api.GetAsyncKeyState(win32con.VK_ESCAPE) & 0x8000:
-                    break
-                if win32api.GetAsyncKeyState(win32con.VK_LBUTTON) & 0x8000:
-                    self.after(0, on_click)
-                    break
-                time.sleep(0.01)
-
-        threading.Thread(target=wait_for_click, daemon=True).start()
+        """돋보기 보존 색상 추출기 시작"""
+        self.picker_mode = True
+        self.picker_target = "inv_keep"
+        self.start_magnifier_picker("inv_keep")
