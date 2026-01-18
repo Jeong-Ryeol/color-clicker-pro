@@ -392,7 +392,11 @@ class ColorClickerApp(
             "sell_running": self.sell_running,
             "consume_running": self.consume_running,
             "consume2_running": self.consume2_running,
-            "skill_auto_running": self.skill_auto_running
+            "skill_p0_running": self.skill_presets[0]['running'],
+            "skill_p1_running": self.skill_presets[1]['running'],
+            "skill_p2_running": self.skill_presets[2]['running'],
+            "skill_p3_running": self.skill_presets[3]['running'],
+            "skill_p4_running": self.skill_presets[4]['running'],
         }
 
         for attr, is_on in states.items():
@@ -431,7 +435,11 @@ class ColorClickerApp(
             "sell_running": self.sell_running,
             "consume_running": self.consume_running,
             "consume2_running": self.consume2_running,
-            "skill_auto_running": self.skill_auto_running
+            "skill_p0_running": self.skill_presets[0]['running'],
+            "skill_p1_running": self.skill_presets[1]['running'],
+            "skill_p2_running": self.skill_presets[2]['running'],
+            "skill_p3_running": self.skill_presets[3]['running'],
+            "skill_p4_running": self.skill_presets[4]['running'],
         }
 
         active_map = {
@@ -441,7 +449,11 @@ class ColorClickerApp(
             "sell_running": self.sell_active,
             "consume_running": self.consume_active,
             "consume2_running": self.consume2_active,
-            "skill_auto_running": self.skill_auto_active
+            "skill_p0_running": self.skill_presets[0]['active'],
+            "skill_p1_running": self.skill_presets[1]['active'],
+            "skill_p2_running": self.skill_presets[2]['active'],
+            "skill_p3_running": self.skill_presets[3]['active'],
+            "skill_p4_running": self.skill_presets[4]['active'],
         }
 
         for attr, is_on in states.items():

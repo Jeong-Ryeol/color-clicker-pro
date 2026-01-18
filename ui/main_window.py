@@ -210,7 +210,11 @@ class MainWindowMixin:
             ("먹기", self.consume_trigger_key, self.consume_trigger_modifier, "consume_running", self.home_toggle_consume),
             ("사기", self.consume2_trigger_key, self.consume2_trigger_modifier, "consume2_running", self.home_toggle_consume2),
             ("팔기", self.sell_trigger_key, self.sell_trigger_modifier, "sell_running", self.home_toggle_sell),
-            ("스킬", self.skill_auto_trigger_key, self.skill_auto_trigger_modifier, "skill_auto_running", self.home_toggle_skill_auto),
+            ("스킬P1", self.skill_presets[0]['trigger_key'], self.skill_presets[0]['trigger_modifier'], "skill_p0_running", lambda: self.toggle_skill_preset_running(0)),
+            ("스킬P2", self.skill_presets[1]['trigger_key'], self.skill_presets[1]['trigger_modifier'], "skill_p1_running", lambda: self.toggle_skill_preset_running(1)),
+            ("스킬P3", self.skill_presets[2]['trigger_key'], self.skill_presets[2]['trigger_modifier'], "skill_p2_running", lambda: self.toggle_skill_preset_running(2)),
+            ("스킬P4", self.skill_presets[3]['trigger_key'], self.skill_presets[3]['trigger_modifier'], "skill_p3_running", lambda: self.toggle_skill_preset_running(3)),
+            ("스킬P5", self.skill_presets[4]['trigger_key'], self.skill_presets[4]['trigger_modifier'], "skill_p4_running", lambda: self.toggle_skill_preset_running(4)),
             ("꾸러기", self.inv_trigger_key, self.inv_trigger_modifier, "inv_running", self.home_toggle_inv),
             ("벨리알", self.trigger_key, self.trigger_modifier, "is_running", self.home_toggle_belial),
         ]
