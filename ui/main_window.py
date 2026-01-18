@@ -871,73 +871,171 @@ class MainWindowMixin:
     # 스킬 자동 사용 컨텐츠
     # =========================================
     def create_skill_auto_content(self, parent):
-        """스킬 자동 사용 컨텐츠 생성"""
-        row1 = ctk.CTkFrame(parent, fg_color="transparent")
+        """스킬 자동 사용 컨텐츠 생성 - 5개 프리셋 지원"""
+        # === 프리셋 선택 탭 ===
+        preset_tab_frame = ctk.CTkFrame(parent, fg_color="#2a2a4e", corner_radius=8)
+        preset_tab_frame.pack(fill="x", pady=5, padx=5)
+
+        ctk.CTkLabel(preset_tab_frame, text="프리셋:",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold")).pack(side="left", padx=10)
+
+        self.skill_preset_buttons = []
+        for i in range(self.SKILL_PRESET_COUNT):
+            btn = ctk.CTkButton(
+                preset_tab_frame,
+                text=f"P{i + 1}",
+                width=50,
+                height=30,
+                command=lambda idx=i: self.select_skill_preset(idx),
+                fg_color=COLORS["primary"] if i == 0 else "transparent",
+                hover_color=COLORS["primary_hover"]
+            )
+            btn.pack(side="left", padx=2, pady=5)
+            self.skill_preset_buttons.append(btn)
+
+        # === 프리셋 설정 영역 (동적으로 업데이트) ===
+        self.skill_preset_config_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        self.skill_preset_config_frame.pack(fill="both", expand=True)
+
+        # 초기 UI 빌드 (프리셋 0)
+        self.build_skill_preset_ui(0)
+
+        # === 하단: 전체 프리셋 상태 요약 ===
+        summary_box = self.create_section_box(parent, "프리셋 상태 요약", "📊")
+
+        self.skill_preset_summary_labels = []
+        summary_row = ctk.CTkFrame(summary_box, fg_color="transparent")
+        summary_row.pack(fill="x", pady=5)
+
+        for i in range(self.SKILL_PRESET_COUNT):
+            preset_frame = ctk.CTkFrame(summary_row, fg_color="#2b2b2b", corner_radius=5)
+            preset_frame.pack(side="left", fill="x", expand=True, padx=2, pady=2)
+
+            ctk.CTkLabel(preset_frame, text=f"P{i + 1}",
+                         font=ctk.CTkFont(family=DEFAULT_FONT, size=11, weight="bold")).pack(side="left", padx=5, pady=5)
+
+            status_label = ctk.CTkLabel(preset_frame, text="OFF",
+                                        text_color="#666666",
+                                        font=ctk.CTkFont(family=DEFAULT_FONT, size=10))
+            status_label.pack(side="left", padx=2)
+
+            key_label = ctk.CTkLabel(preset_frame, text=self.skill_presets[i]['trigger_key'].get().upper(),
+                                     text_color="#ff9900",
+                                     font=ctk.CTkFont(family=DEFAULT_FONT, size=10, weight="bold"))
+            key_label.pack(side="right", padx=5)
+
+            self.skill_preset_summary_labels.append({
+                'status': status_label,
+                'key': key_label
+            })
+
+        # 도움말
+        help_frame = ctk.CTkFrame(parent, fg_color="#2a2a4e", corner_radius=8)
+        help_frame.pack(fill="x", pady=5, padx=5)
+        ctk.CTkLabel(help_frame, text="💡 각 프리셋은 독립적인 핫키로 동시 실행 가능",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#cccccc").pack(pady=3)
+        ctk.CTkLabel(help_frame, text="💡 Enter: 채팅할 때 pause / F12: 긴급정지",
+                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#cccccc").pack(pady=(0, 3))
+
+    def select_skill_preset(self, preset_idx):
+        """프리셋 선택 시 UI 업데이트"""
+        self.skill_current_preset_idx.set(preset_idx)
+
+        # 탭 버튼 스타일 업데이트
+        for i, btn in enumerate(self.skill_preset_buttons):
+            if i == preset_idx:
+                btn.configure(fg_color=COLORS["primary"])
+            else:
+                btn.configure(fg_color="transparent")
+
+        # 설정 UI 재구축
+        self.build_skill_preset_ui(preset_idx)
+
+    def build_skill_preset_ui(self, preset_idx):
+        """선택된 프리셋에 대한 설정 UI 구축"""
+        # 기존 내용 삭제
+        for widget in self.skill_preset_config_frame.winfo_children():
+            widget.destroy()
+
+        preset = self.skill_presets[preset_idx]
+
+        # === Row 1: 설정 + 컨트롤 ===
+        row1 = ctk.CTkFrame(self.skill_preset_config_frame, fg_color="transparent")
         row1.pack(fill="x", pady=5)
 
-        # 설정
-        settings_box = self.create_section_box(row1, "설정", "⚙️")
+        # 설정 박스
+        settings_box = self.create_section_box(row1, f"설정 (프리셋 {preset_idx + 1})", "⚙️")
         settings_box.master.pack(side="left", fill="both", expand=True, padx=2)
 
-        # 핫키 (시작/중지)
+        # 핫키 설정
         key_row = ctk.CTkFrame(settings_box, fg_color="transparent")
         key_row.pack(fill="x", pady=5)
         ctk.CTkLabel(key_row, text="핫키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="left")
         ctk.CTkButton(key_row, text="변경", width=45, height=25,
-                      command=self.change_skill_auto_trigger_key).pack(side="right", padx=2)
-        self.skill_auto_key_display = ctk.CTkLabel(key_row, text=self.skill_auto_trigger_key.get().upper(),
-                                                   font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold"),
-                                                   text_color="#00ff00")
-        self.skill_auto_key_display.pack(side="right", padx=5)
+                      command=lambda: self.change_skill_preset_trigger_key(preset_idx)).pack(side="right", padx=2)
+
+        self.skill_preset_key_display = ctk.CTkLabel(
+            key_row, text=preset['trigger_key'].get().upper(),
+            font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold"),
+            text_color="#00ff00"
+        )
+        self.skill_preset_key_display.pack(side="right", padx=5)
         ctk.CTkLabel(key_row, text="+", font=ctk.CTkFont(family=DEFAULT_FONT, size=12)).pack(side="right")
         ctk.CTkComboBox(key_row, values=["없음", "Ctrl", "Alt", "Shift"],
-                        variable=self.skill_auto_trigger_modifier, width=65, height=25).pack(side="right", padx=2)
+                        variable=preset['trigger_modifier'], width=65, height=25).pack(side="right", padx=2)
 
-        # 컨트롤
+        # 컨트롤 박스
         ctrl_box = self.create_section_box(row1, "컨트롤", "🎮")
         ctrl_box.master.pack(side="left", fill="both", expand=True, padx=2)
 
-        self.skill_auto_start_btn = ctk.CTkButton(ctrl_box, text="▶ 시작", height=50,
-                                                  command=self.toggle_skill_auto_running,
-                                                  fg_color="#28a745",
-                                                  font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold"))
-        self.skill_auto_start_btn.pack(fill="x", pady=5)
+        preset['_start_btn'] = ctk.CTkButton(
+            ctrl_box,
+            text="⏹️ 중지" if preset['running'] else "▶️ 시작",
+            height=50,
+            command=lambda: self.toggle_skill_preset_running(preset_idx),
+            fg_color=COLORS["danger"] if preset['running'] else COLORS["success"],
+            hover_color=COLORS["danger_hover"] if preset['running'] else COLORS["success_hover"],
+            font=ctk.CTkFont(family=DEFAULT_FONT, size=16, weight="bold")
+        )
+        preset['_start_btn'].pack(fill="x", pady=5)
 
-        self.skill_auto_status_label = ctk.CTkLabel(ctrl_box, text="⏸️ 대기 중",
-                                                    font=ctk.CTkFont(family=DEFAULT_FONT, size=14))
-        self.skill_auto_status_label.pack(pady=5)
+        status_text = "⏸️ 대기 중"
+        if preset['running']:
+            if preset['active']:
+                status_text = "⚡ 스킬 실행 중..."
+            else:
+                status_text = f"🔴 [{preset['trigger_key'].get().upper()}] 키로 시작"
 
-        self.skill_auto_pause_label = ctk.CTkLabel(ctrl_box, text="",
-                                                   font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
-        self.skill_auto_pause_label.pack(pady=2)
+        preset['_status_label'] = ctk.CTkLabel(ctrl_box, text=status_text,
+                                               font=ctk.CTkFont(family=DEFAULT_FONT, size=14))
+        preset['_status_label'].pack(pady=5)
+
+        preset['_pause_label'] = ctk.CTkLabel(ctrl_box, text="",
+                                              font=ctk.CTkFont(family=DEFAULT_FONT, size=12))
+        preset['_pause_label'].pack(pady=2)
 
         # === 스킬 슬롯 영역 ===
-        slot_box = self.create_section_box(parent, "스킬 슬롯 (쿨타임 초 입력)", "🎯")
+        slot_box = self.create_section_box(self.skill_preset_config_frame, "스킬 슬롯 (쿨타임 초 입력)", "🎯")
 
-        # 위젯 저장용
-        self.skill_slot_widgets = []
+        preset['_slot_widgets'] = []
 
-        # 슬롯 3줄 x 3열 배치 (총 9개)
         for row_idx in range(3):
             slot_row = ctk.CTkFrame(slot_box, fg_color="transparent")
             slot_row.pack(fill="x", pady=5)
 
             for col_idx in range(3):
                 slot_idx = row_idx * 3 + col_idx
-                slot = self.skill_slots[slot_idx]
+                slot = preset['slots'][slot_idx]
 
-                # 슬롯 프레임
                 slot_frame = ctk.CTkFrame(slot_row, fg_color="#2b2b2b", corner_radius=8, width=150)
                 slot_frame.pack(side="left", fill="both", expand=True, padx=5)
 
-                # 체크박스 + 슬롯 번호
                 header = ctk.CTkFrame(slot_frame, fg_color="transparent")
                 header.pack(fill="x", padx=5, pady=5)
                 ctk.CTkCheckBox(header, text=f"슬롯 {slot_idx + 1}",
                                 variable=slot['enabled'],
                                 font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold")).pack(side="left")
 
-                # 키 설정
                 key_frame = ctk.CTkFrame(slot_frame, fg_color="transparent")
                 key_frame.pack(fill="x", padx=5, pady=2)
                 ctk.CTkLabel(key_frame, text="키:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
@@ -946,37 +1044,27 @@ class MainWindowMixin:
                                          text_color="#00aaff")
                 key_label.pack(side="left", padx=5)
                 ctk.CTkButton(key_frame, text="변경", width=40, height=22,
-                              command=lambda idx=slot_idx: self.change_skill_slot_key(idx)).pack(side="right")
+                              command=lambda p=preset_idx, s=slot_idx: self.change_skill_preset_slot_key(p, s)).pack(side="right")
 
-                # 쿨타임 입력
                 cd_frame = ctk.CTkFrame(slot_frame, fg_color="transparent")
                 cd_frame.pack(fill="x", padx=5, pady=5)
                 ctk.CTkLabel(cd_frame, text="쿨타임:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
                 ctk.CTkLabel(cd_frame, text="초", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="right")
                 create_numeric_entry(cd_frame, slot['cooldown'], width=50, is_float=True).pack(side="right", padx=5)
 
-                # 위젯 저장
-                self.skill_slot_widgets.append({
+                preset['_slot_widgets'].append({
                     'frame': slot_frame,
                     'key_label': key_label
                 })
 
         # 혼령사 물총 모드
-        honryeongsa_frame = ctk.CTkFrame(parent, fg_color="#3a2a2e", corner_radius=8)
+        honryeongsa_frame = ctk.CTkFrame(self.skill_preset_config_frame, fg_color="#3a2a2e", corner_radius=8)
         honryeongsa_frame.pack(fill="x", pady=5, padx=5)
         ctk.CTkCheckBox(honryeongsa_frame, text="🔫 혼령사 물총 모드",
-                        variable=self.honryeongsa_mode,
+                        variable=preset['honryeongsa_mode'],
                         font=ctk.CTkFont(family=DEFAULT_FONT, size=12, weight="bold")).pack(side="left", padx=10, pady=8)
         ctk.CTkLabel(honryeongsa_frame, text="스페이스바 누르는 동안 매크로 스페이스 입력 일시정지",
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#aaaaaa").pack(side="left", padx=5)
-
-        # 도움말
-        help_frame = ctk.CTkFrame(parent, fg_color="#2a2a4e", corner_radius=8)
-        help_frame.pack(fill="x", pady=10, padx=5)
-        ctk.CTkLabel(help_frame, text="💡 Enter: 채팅할 때 pause / 다시 Enter: 재개",
-                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#cccccc").pack(pady=5)
-        ctk.CTkLabel(help_frame, text="💡 긴급정지(F12): 모든 매크로 즉시 중지",
-                     font=ctk.CTkFont(family=DEFAULT_FONT, size=11), text_color="#cccccc").pack(pady=(0, 5))
 
     # =========================================
     # 사용법 컨텐츠
@@ -995,68 +1083,201 @@ class MainWindowMixin:
                      font=ctk.CTkFont(family=DEFAULT_FONT, size=13, weight="bold"),
                      text_color="#00ff00").pack(pady=(0, 15))
 
-        # 사용법 섹션들
+        # 사용법 섹션들 (상세 버전)
         help_sections = [
-            ("👁️ 벨리알 (아이템 줍기)",
-             "바닥에 떨어진 아이템을 자동으로 클릭해서 줍습니다.\n\n"
-             "1. [화면추출] 버튼 클릭\n"
-             "2. 게임 화면에서 아이템 이름 색상 클릭\n"
-             "3. [시작] 버튼으로 기능 켜기\n"
-             "4. 게임에서 핫키 누르면 자동 줍기 시작\n"
-             "5. 다시 핫키 누르면 멈춤\n\n"
-             "※ 제외 색상: 줍지 말아야 할 아이템 색상 등록"),
-            ("✨ 신화장난꾸러기 (인벤 정리)",
-             "인벤토리에서 신화 장난꾸러기만 즐겨찾기 등록합니다.\n\n"
-             "1. [추출] 버튼으로 보존할 색상 등록\n"
-             "2. [영역 설정]으로 인벤토리 영역 드래그\n"
-             "3. [시작] 버튼으로 기능 켜기\n"
-             "4. 게임에서 핫키 누르면 자동 즐겨찾기 시작\n"
-             "5. 다시 핫키 누르면 멈춤\n\n"
-             "※ 스페이스바로 즐겨찾기 등록됩니다"),
+            ("📌 처음 사용하시는 분들께",
+             "이 프로그램은 디아블로4 게임 내에서 반복 작업을 자동화해주는 도구입니다.\n\n"
+             "【기본 개념】\n"
+             "• 핫키: 기능을 켜고 끄는 단축키입니다 (예: F1, F2 등)\n"
+             "• 시작 버튼: 핫키가 작동하도록 기능을 '대기' 상태로 만듭니다\n"
+             "• 픽셀/색상: 화면의 특정 색을 인식해서 동작합니다\n\n"
+             "【사용 순서】\n"
+             "1. 왼쪽 메뉴에서 원하는 기능 탭 클릭\n"
+             "2. 필요한 설정 완료 (색상 등록, 영역 설정 등)\n"
+             "3. [▶ 시작] 버튼 클릭 → 버튼이 [⏹ 중지]로 바뀜\n"
+             "4. 게임으로 돌아가서 핫키 누르면 동작 시작\n"
+             "5. 다시 핫키 누르면 동작 멈춤\n\n"
+             "【주의사항】\n"
+             "• 긴급정지(F12): 모든 동작 즉시 멈춤\n"
+             "• 프로그램은 게임 위에 항상 떠있어야 합니다"),
+
+            ("👁️ 벨리알 (아이템 자동 줍기)",
+             "바닥에 떨어진 아이템 이름 색상을 인식해서 자동으로 클릭합니다.\n\n"
+             "【색상 등록 방법】\n"
+             "1. 게임에서 아이템이 바닥에 떨어진 상태로 만들기\n"
+             "2. 프로그램에서 [화면추출] 버튼 클릭\n"
+             "3. 화면이 어두워지면서 마우스가 십자가로 변함\n"
+             "4. 줍고 싶은 아이템 이름 글자 위에 마우스를 올리고 클릭\n"
+             "5. 색상이 목록에 추가됨 (여러 색상 등록 가능)\n\n"
+             "【제외 색상 등록】\n"
+             "• 줍지 말아야 할 아이템이 있다면 [제외 색상 추출] 버튼으로 등록\n"
+             "• 예: 흰색 일반 아이템 제외하고 싶을 때\n\n"
+             "【검색 영역 설정】\n"
+             "1. [영역 설정] 버튼 클릭\n"
+             "2. 화면에서 아이템이 떨어지는 범위의 왼쪽 위 모서리 클릭\n"
+             "3. 오른쪽 아래 모서리 클릭\n"
+             "4. 이 영역 안에서만 아이템을 찾습니다\n\n"
+             "【사용하기】\n"
+             "1. [▶ 시작] 버튼 클릭\n"
+             "2. 게임에서 핫키(기본 F4) 누르면 자동 줍기 시작\n"
+             "3. 다시 핫키 누르면 멈춤"),
+
+            ("✨ 신화장난꾸러기 (인벤토리 정리)",
+             "인벤토리에서 '신화 장난꾸러기' 아이템만 자동으로 즐겨찾기 등록합니다.\n"
+             "나머지 아이템은 버리기 쉽게 정리됩니다.\n\n"
+             "【보존할 색상 등록】\n"
+             "1. 게임에서 인벤토리를 열고 신화 장난꾸러기 아이템 위에 마우스 올리기\n"
+             "2. 아이템 설명창이 뜨면 '신화 장난꾸러기' 글자 확인\n"
+             "3. 프로그램에서 [추출] 버튼 클릭\n"
+             "4. 보라색 '신화 장난꾸러기' 글자 위 클릭\n\n"
+             "【인벤토리 영역 설정】\n"
+             "1. 게임에서 인벤토리 열기\n"
+             "2. [인벤 영역] 버튼 클릭\n"
+             "3. 인벤토리 칸들의 왼쪽 위 첫번째 칸 모서리 클릭\n"
+             "4. 오른쪽 아래 마지막 칸 모서리 클릭\n\n"
+             "【설명창 영역 설정】\n"
+             "1. 아이템 위에 마우스 올려서 설명창 띄우기\n"
+             "2. [설명 영역] 버튼 클릭\n"
+             "3. 설명창 전체를 드래그로 선택\n\n"
+             "【사용하기】\n"
+             "1. [▶ 시작] 버튼 클릭\n"
+             "2. 게임에서 인벤토리 열고 핫키(기본 F3) 누르기\n"
+             "3. 자동으로 각 칸을 확인하며 즐겨찾기 등록\n"
+             "4. 완료되면 자동으로 멈춤"),
+
             ("🗑️ 아이템 버리기",
-             "인벤토리의 아이템을 Ctrl+클릭으로 버립니다.\n\n"
-             "1. [시작] 버튼으로 기능 켜기\n"
-             "2. 게임에서 인벤토리 열기\n"
-             "3. 버릴 아이템 위에 마우스 올리기\n"
-             "4. 핫키 누르면 Ctrl+클릭 반복 시작\n"
-             "5. 다시 핫키 누르면 멈춤"),
+             "인벤토리 아이템을 Ctrl+클릭으로 빠르게 버립니다.\n\n"
+             "【사용 방법】\n"
+             "1. 프로그램에서 [▶ 시작] 버튼 클릭\n"
+             "2. 게임에서 인벤토리 열기 (I키)\n"
+             "3. 버리고 싶은 첫 번째 아이템 위에 마우스 올리기\n"
+             "4. 핫키(기본 F1) 누르기\n"
+             "5. Ctrl+클릭이 빠르게 반복되면서 아이템 버려짐\n"
+             "6. 다시 핫키 누르면 멈춤\n\n"
+             "【팁】\n"
+             "• 마우스를 옆 칸으로 천천히 움직이면 여러 아이템 버리기 가능\n"
+             "• 딜레이 설정으로 버리는 속도 조절 가능"),
+
             ("💰 아이템 팔기",
-             "상점에서 아이템을 우클릭으로 판매합니다.\n\n"
-             "1. [시작] 버튼으로 기능 켜기\n"
+             "상점에서 아이템을 우클릭으로 빠르게 판매합니다.\n\n"
+             "【사용 방법】\n"
+             "1. 프로그램에서 [▶ 시작] 버튼 클릭\n"
+             "2. 게임에서 상점 NPC와 대화해서 상점 열기\n"
+             "3. 팔고 싶은 첫 번째 아이템 위에 마우스 올리기\n"
+             "4. 핫키(기본 F2) 누르기\n"
+             "5. 우클릭이 빠르게 반복되면서 아이템 판매됨\n"
+             "6. 다시 핫키 누르면 멈춤\n\n"
+             "【팁】\n"
+             "• 마우스를 옆 칸으로 천천히 움직이면 여러 아이템 판매 가능"),
+
+            ("🍖 아이템 먹기 (소비)",
+             "설정한 키를 빠르게 반복합니다. 포션이나 음식 사용에 유용합니다.\n\n"
+             "【누를 키 설정】\n"
+             "1. '누를 키' 옆의 [변경] 버튼 클릭\n"
+             "2. 새 창에서 원하는 키 누르기\n"
+             "   • 우클릭: 마우스 오른쪽 버튼\n"
+             "   • 좌클릭: 마우스 왼쪽 버튼\n"
+             "   • 키보드 키: 아무 키나\n\n"
+             "【사용 방법】\n"
+             "1. [▶ 시작] 버튼 클릭\n"
+             "2. 게임에서 사용할 아이템 위에 마우스 올리기\n"
+             "3. 핫키(기본 Mouse5) 누르기\n"
+             "4. 설정한 키가 빠르게 반복됨\n"
+             "5. 다시 핫키 누르면 멈춤\n\n"
+             "【Enter로 일시정지】\n"
+             "• 동작 중에 Enter 누르면 일시정지 (채팅할 때 유용)\n"
+             "• 다시 Enter 누르면 재개"),
+
+            ("🛒 아이템 사기 (구매)",
+             "상점에서 아이템을 빠르게 구매합니다. '먹기'와 동일한 기능이지만\n"
+             "별도 핫키로 사용할 수 있습니다.\n\n"
+             "【사용 방법】\n"
+             "1. [▶ 시작] 버튼 클릭\n"
              "2. 게임에서 상점 열기\n"
-             "3. 팔 아이템 위에 마우스 올리기\n"
-             "4. 핫키 누르면 우클릭 반복 시작\n"
-             "5. 다시 핫키 누르면 멈춤"),
-            ("🍖 아이템 먹기",
-             "설정한 키를 빠르게 반복합니다.\n\n"
-             "1. [누를 키]에서 사용할 키 설정 (예: 우클릭)\n"
-             "2. [시작] 버튼으로 기능 켜기\n"
-             "3. 사용할 아이템 위에 마우스 올리기\n"
-             "4. 핫키 누르면 설정한 키 빠르게 반복\n"
-             "5. 다시 핫키 누르면 멈춤"),
-            ("🛒 아이템 사기",
-             "상점에서 아이템을 빠르게 구매합니다.\n\n"
-             "1. [누를 키]에서 구매 키 설정 (기본: 우클릭)\n"
-             "2. [시작] 버튼으로 기능 켜기\n"
-             "3. 상점에서 살 아이템 위에 마우스 올리기\n"
-             "4. 핫키 누르면 설정한 키 빠르게 반복\n"
-             "5. 다시 핫키 누르면 멈춤\n\n"
-             "※ '먹기' 기능과 동일하지만 별도 탭으로 분리"),
-            ("⚡ 스킬 자동 사용",
-             "설정한 쿨타임에 따라 스킬 키를 자동으로 누릅니다.\n\n"
-             "1. 사용할 슬롯 체크박스 활성화\n"
-             "2. 각 슬롯에 누를 키와 쿨타임(초) 설정\n"
-             "3. [시작] 버튼으로 기능 켜기\n"
-             "4. 게임에서 핫키 누르면 자동 입력 시작\n"
-             "5. 다시 핫키 누르면 멈춤\n\n"
-             "※ Enter: 채팅할 때 일시정지 (다시 Enter로 재개)\n"
-             "※ 긴급정지로 모든 매크로 즉시 중지"),
+             "3. 구매할 아이템 위에 마우스 올리기\n"
+             "4. 핫키(기본 Mouse4) 누르기\n"
+             "5. 설정한 키가 빠르게 반복되며 구매됨\n"
+             "6. 다시 핫키 누르면 멈춤"),
+
+            ("⚡ 스킬 자동 사용 (5개 프리셋)",
+             "설정한 쿨타임마다 스킬 키를 자동으로 눌러줍니다.\n"
+             "5개의 프리셋을 만들어서 상황에 따라 다르게 사용할 수 있습니다.\n\n"
+             "【프리셋 선택】\n"
+             "• 상단의 P1, P2, P3, P4, P5 버튼으로 프리셋 전환\n"
+             "• 각 프리셋마다 다른 스킬 조합 설정 가능\n"
+             "• 여러 프리셋 동시 실행 가능\n\n"
+             "【스킬 슬롯 설정】\n"
+             "1. 사용할 슬롯의 체크박스 클릭해서 활성화\n"
+             "2. '키' 옆 [변경] 버튼 클릭 → 누를 키 설정\n"
+             "   (예: 1, 2, 3, 4 또는 좌클릭, 우클릭)\n"
+             "3. '쿨타임' 칸에 초 단위로 입력\n"
+             "   (예: 0.5 = 0.5초마다, 2 = 2초마다)\n\n"
+             "【핫키 설정】\n"
+             "• 각 프리셋마다 다른 핫키 설정 가능 (기본: F6~F10)\n"
+             "• '핫키' 옆 [변경] 버튼으로 변경\n\n"
+             "【사용하기】\n"
+             "1. [▶ 시작] 버튼 클릭 → 오버레이에 표시됨\n"
+             "2. 게임에서 핫키 누르면 스킬 자동 입력 시작\n"
+             "3. 다시 핫키 누르면 멈춤\n\n"
+             "【Enter로 일시정지】\n"
+             "• 채팅할 때 Enter 누르면 일시정지\n"
+             "• 다시 Enter 누르면 재개\n\n"
+             "【혼령사 물총 모드】\n"
+             "• 스페이스바를 직접 누르고 있을 때는 매크로가 스페이스 스킵"),
+
+            ("📱 퀵버튼 (인벤토리 버튼 3개)",
+             "인벤토리나 상점을 열면 화면에 [버리기] [팔기] [묶기] 버튼이 자동으로 나타납니다.\n\n"
+             "【픽셀 감지 설정 - 중요!】\n"
+             "프로그램이 인벤토리/상점 열림을 감지하려면 픽셀 설정이 필요합니다.\n\n"
+             "◆ 픽셀1 설정 (인벤토리 감지용)\n"
+             "1. 게임에서 인벤토리 열기 (I키)\n"
+             "2. 화면 오른쪽 위를 보면 돋보기 아이콘이 있음\n"
+             "3. 프로그램 Home 탭 → 퀵버튼 설정 → [픽셀1 추출] 클릭\n"
+             "4. 돋보기 아이콘의 가장 검은색 부분 클릭\n"
+             "   (돋보기 중간쯤 제일 어두운 픽셀)\n\n"
+             "◆ 픽셀2 설정 (상점 감지용)\n"
+             "1. 게임에서 상점 NPC와 대화해서 상점 열기\n"
+             "2. 똑같이 오른쪽 위 돋보기 아이콘 찾기\n"
+             "3. [픽셀2 추출] 버튼 클릭\n"
+             "4. 돋보기의 검은색 부분 클릭\n\n"
+             "【버튼 위치 설정】\n"
+             "• 버튼이 게임 UI와 겹치면 위치 조정 필요\n"
+             "• [버리기 위치], [팔기 위치], [묶기 위치] 버튼으로\n"
+             "  각 버튼이 나타날 위치 클릭해서 지정\n\n"
+             "【사용하기】\n"
+             "1. Home 탭에서 '퀵버튼' 체크박스 켜기\n"
+             "2. 게임에서 인벤토리 열면 버튼 3개 자동으로 나타남\n"
+             "3. 버튼 클릭하면 해당 기능 바로 실행"),
+
             ("🛑 긴급 정지",
-             "실행 중인 클릭/매크로를 즉시 멈춥니다.\n\n"
+             "실행 중인 모든 동작을 즉시 멈춥니다.\n\n"
+             "【사용 방법】\n"
              "• 기본 키: F12\n"
-             "• Home 탭에서 키 변경 가능\n"
-             "• 기능은 켜진 상태로 유지됩니다\n"
-             "• 버그로 클릭이 안 멈출 때 사용!"),
+             "• 언제든 F12 누르면 모든 클릭/매크로 즉시 멈춤\n\n"
+             "【키 변경】\n"
+             "• Home 탭 → '긴급정지' 옆 [변경] 버튼\n"
+             "• 원하는 키 누르기\n\n"
+             "【참고】\n"
+             "• 긴급정지 눌러도 기능은 '켜진 상태' 유지됨\n"
+             "• 동작만 멈추고, 다시 핫키 누르면 재시작 가능\n"
+             "• 버그로 클릭이 멈추지 않을 때 꼭 사용하세요!"),
+
+            ("🎨 오버레이 (상태 표시창)",
+             "게임 화면 위에 뜨는 작은 상태창입니다.\n"
+             "각 기능의 켜짐/꺼짐 상태와 핫키를 보여줍니다.\n\n"
+             "【켜기/끄기】\n"
+             "• Home 탭 → [오버레이 켜기] 버튼\n\n"
+             "【위치 이동】\n"
+             "1. [재배치] 버튼 클릭\n"
+             "2. 오버레이를 마우스로 드래그해서 원하는 위치로\n"
+             "3. Enter 또는 Esc 누르면 고정\n\n"
+             "【크기/투명도 조절】\n"
+             "• Home 탭에서 슬라이더로 조절 가능\n\n"
+             "【상태 표시 의미】\n"
+             "• OFF: 기능이 꺼진 상태\n"
+             "• ON: 기능이 켜졌고 핫키 대기 중\n"
+             "• Working: 현재 동작 실행 중\n"
+             "• Pause: 일시정지 상태"),
         ]
 
         for title, content in help_sections:

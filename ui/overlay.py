@@ -111,15 +111,25 @@ class OverlayMixin:
                          font=('맑은 고딕', self.overlay_font_size, 'bold'))
         title.pack(pady=(0, int(5*scale)))
 
+        # 기본 기능 목록 (스킬 제외)
         functions = [
             ("버리기", self.discard_trigger_key, self.discard_trigger_modifier, "discard_running"),
             ("먹기", self.consume_trigger_key, self.consume_trigger_modifier, "consume_running"),
             ("사기", self.consume2_trigger_key, self.consume2_trigger_modifier, "consume2_running"),
             ("팔기", self.sell_trigger_key, self.sell_trigger_modifier, "sell_running"),
-            ("스킬", self.skill_auto_trigger_key, self.skill_auto_trigger_modifier, "skill_auto_running"),
             ("꾸러기", self.inv_trigger_key, self.inv_trigger_modifier, "inv_running"),
             ("벨리알", self.trigger_key, self.trigger_modifier, "is_running"),
         ]
+
+        # running=True인 스킬 프리셋만 동적으로 추가
+        for i, preset in enumerate(self.skill_presets):
+            if preset['running']:
+                functions.append((
+                    f"스킬{i+1}",
+                    preset['trigger_key'],
+                    preset['trigger_modifier'],
+                    f"skill_preset_{i}_running"
+                ))
 
         self.overlay_labels = {}
         self.overlay_name_labels = {}
@@ -190,10 +200,11 @@ class OverlayMixin:
             self.overlay_hotkey_vars = {}
 
     def update_overlay(self):
-        """오버레이 상태 업데이트 (200ms 간격)"""
+        """오버레이 상태 업데이트 (200ms 간격) - 5개 스킬 프리셋 지원"""
         if self.overlay_window is None:
             return
 
+        # 기본 기능 상태
         states = {
             "is_running": self.is_running,
             "inv_running": self.inv_running,
@@ -201,7 +212,6 @@ class OverlayMixin:
             "sell_running": self.sell_running,
             "consume_running": self.consume_running,
             "consume2_running": self.consume2_running,
-            "skill_auto_running": self.skill_auto_running
         }
 
         active_states = {
@@ -211,14 +221,19 @@ class OverlayMixin:
             "sell_running": self.sell_active,
             "consume_running": self.consume_active,
             "consume2_running": self.consume2_active,
-            "skill_auto_running": self.skill_auto_active
         }
 
         paused_states = {
             "consume_running": getattr(self, 'consume_paused', False),
             "consume2_running": getattr(self, 'consume2_paused', False),
-            "skill_auto_running": getattr(self, 'skill_auto_paused', False)
         }
+
+        # 스킬 프리셋별 상태 추가
+        for i, preset in enumerate(self.skill_presets):
+            attr = f"skill_preset_{i}_running"
+            states[attr] = preset['running']
+            active_states[attr] = preset['active']
+            paused_states[attr] = preset['paused']
 
         for attr, is_on in states.items():
             is_active = active_states.get(attr, False)
@@ -262,6 +277,18 @@ class OverlayMixin:
 
         if self.overlay_window:
             self.overlay_window.after(200, self.update_overlay)
+
+    def refresh_overlay_for_skill_presets(self):
+        """스킬 프리셋 ON/OFF 시 오버레이 재생성"""
+        if self.overlay_window is not None:
+            self.destroy_overlay()
+            self.create_overlay_window()
+            if hasattr(self, 'overlay_toggle_btn'):
+                self.overlay_toggle_btn.configure(
+                    text="오버레이 끄기",
+                    fg_color=COLORS["danger"],
+                    hover_color=COLORS["danger_hover"]
+                )
 
     def set_overlay_click_through(self, enable=True):
         """오버레이 클릭 통과 설정 (Windows only)"""

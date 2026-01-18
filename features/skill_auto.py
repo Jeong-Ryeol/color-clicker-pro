@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-스킬 자동 사용 기능 (시간 기반)
+스킬 자동 사용 기능 (시간 기반) - 5개 프리셋 지원
 """
 
 import time
@@ -12,156 +12,265 @@ from constants import COLORS
 
 
 class SkillAutoMixin:
-    """스킬 자동 사용 믹스인"""
+    """스킬 자동 사용 믹스인 - 5개 프리셋 지원"""
+
+    SKILL_PRESET_COUNT = 5
 
     def init_skill_auto_vars(self):
-        """스킬 자동 관련 변수 초기화"""
+        """스킬 자동 관련 변수 초기화 - 5개 프리셋"""
         import customtkinter as ctk
 
+        # 5개 프리셋 배열
+        self.skill_presets = []
+        for i in range(self.SKILL_PRESET_COUNT):
+            preset = {
+                'name': ctk.StringVar(value=f"프리셋 {i + 1}"),
+                'running': False,          # 시작 버튼으로 ON/OFF
+                'active': False,           # 핫키로 실행 중
+                'paused': False,           # Enter로 일시정지
+                'trigger_key': ctk.StringVar(value=f"f{6 + i}"),  # F6~F10
+                'trigger_modifier': ctk.StringVar(value="없음"),
+                'last_trigger_time': 0,
+                'slots': [],               # 9개 슬롯
+                'last_used': [0.0] * 9,    # 각 스킬별 마지막 사용 시간
+                'honryeongsa_mode': ctk.BooleanVar(value=False),
+                # UI 위젯 참조 (동적 생성)
+                '_start_btn': None,
+                '_status_label': None,
+                '_pause_label': None,
+                '_slot_widgets': []
+            }
+            # 9개 슬롯 초기화
+            for j in range(9):
+                slot = {
+                    'enabled': ctk.BooleanVar(value=False),
+                    'key': ctk.StringVar(value=str(j + 1)),
+                    'cooldown': ctk.DoubleVar(value=0.0)
+                }
+                preset['slots'].append(slot)
+            self.skill_presets.append(preset)
+
+        # 현재 UI에서 선택된 프리셋 인덱스
+        self.skill_current_preset_idx = ctk.IntVar(value=0)
+
+        # 하위 호환성을 위한 래퍼 (기존 코드에서 사용 시)
         self.skill_auto_running = False
         self.skill_auto_active = False
-        self.skill_auto_paused = False  # Enter로 일시정지
-        self.skill_auto_trigger_key = ctk.StringVar(value="f6")
-        self.skill_auto_trigger_modifier = ctk.StringVar(value="없음")
-        self.skill_auto_last_trigger_time = 0
+        self.skill_auto_paused = False
+        self.skill_auto_trigger_key = self.skill_presets[0]['trigger_key']
+        self.skill_auto_trigger_modifier = self.skill_presets[0]['trigger_modifier']
+        self.skill_slots = self.skill_presets[0]['slots']
+        self.honryeongsa_mode = self.skill_presets[0]['honryeongsa_mode']
 
-        # 스킬 슬롯 설정 (9개 슬롯)
-        self.skill_slots = []
-        for i in range(9):
-            slot = {
-                'enabled': ctk.BooleanVar(value=False),
-                'key': ctk.StringVar(value=str(i + 1) if i < 9 else str(i + 1)),  # 기본: 1~9
-                'cooldown': ctk.DoubleVar(value=0.0)  # 쿨타임 (초)
-            }
-            self.skill_slots.append(slot)
-
-        # 각 스킬별 마지막 사용 시간
-        self.skill_last_used = [0.0] * 9
-
-        # 혼령사 물총 모드 (스페이스바 누르는 동안 매크로 스페이스바 스킵)
-        self.honryeongsa_mode = ctk.BooleanVar(value=False)
-
-    def toggle_skill_auto_running(self):
-        """스킬 자동 시작/중지"""
-        self.skill_auto_running = not self.skill_auto_running
-        if self.skill_auto_running:
-            self.skill_auto_start_btn.configure(text="⏹️ 중지", fg_color=COLORS["danger"], hover_color=COLORS["danger_hover"])
-            self.skill_auto_status_label.configure(text=f"🔴 [{self.skill_auto_trigger_key.get().upper()}] 키로 시작")
-            self.update_idletasks()
-        else:
-            self.skill_auto_active = False
-            self.skill_auto_paused = False
-            self.skill_auto_start_btn.configure(text="▶️ 시작", fg_color=COLORS["success"], hover_color=COLORS["success_hover"])
-            self.skill_auto_status_label.configure(text="⏸️ 대기 중")
-            self.skill_auto_pause_label.configure(text="")
-            self.update_idletasks()
-        self.update_home_status_now()
-
-    def run_skill_auto_loop(self):
-        """스킬 자동 루프 - 각 스킬별 쿨타임 체크 후 입력"""
+    def _execute_skill_key(self, key):
+        """스킬 키 입력 실행 (공통 함수)"""
         import win32con
+        try:
+            if key == "좌클릭" or key == "왼클릭":
+                win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+                win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+            elif key == "우클릭":
+                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0)
+                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0)
+            elif key.lower() == "mouse4":
+                win32api.mouse_event(win32con.MOUSEEVENTF_XDOWN, 0, 0, win32con.XBUTTON1, 0)
+                win32api.mouse_event(win32con.MOUSEEVENTF_XUP, 0, 0, win32con.XBUTTON1, 0)
+            elif key.lower() == "mouse5":
+                win32api.mouse_event(win32con.MOUSEEVENTF_XDOWN, 0, 0, win32con.XBUTTON2, 0)
+                win32api.mouse_event(win32con.MOUSEEVENTF_XUP, 0, 0, win32con.XBUTTON2, 0)
+            else:
+                keyboard.press_and_release(key.lower())
+        except:
+            pass
 
-        self.after(0, lambda: self.skill_auto_status_label.configure(text="⚡ 스킬 실행 중..."))
+    def toggle_skill_preset_running(self, preset_idx):
+        """특정 프리셋 시작/중지"""
+        preset = self.skill_presets[preset_idx]
+        preset['running'] = not preset['running']
 
-        # 마지막 사용 시간 초기화 (즉시 사용 시작)
-        self.skill_last_used = [0.0] * 9
+        if preset['running']:
+            # 시작
+            if preset['_start_btn']:
+                preset['_start_btn'].configure(
+                    text="⏹️ 중지",
+                    fg_color=COLORS["danger"],
+                    hover_color=COLORS["danger_hover"]
+                )
+            if preset['_status_label']:
+                preset['_status_label'].configure(
+                    text=f"🔴 [{preset['trigger_key'].get().upper()}] 키로 시작"
+                )
+        else:
+            # 중지
+            preset['active'] = False
+            preset['paused'] = False
+            if preset['_start_btn']:
+                preset['_start_btn'].configure(
+                    text="▶️ 시작",
+                    fg_color=COLORS["success"],
+                    hover_color=COLORS["success_hover"]
+                )
+            if preset['_status_label']:
+                preset['_status_label'].configure(text="⏸️ 대기 중")
+            if preset['_pause_label']:
+                preset['_pause_label'].configure(text="")
 
-        while self.skill_auto_active and self.skill_auto_running:
-            # Enter로 일시정지된 상태
-            if self.skill_auto_paused:
+        # 오버레이 업데이트
+        if hasattr(self, 'refresh_overlay_for_skill_presets'):
+            self.refresh_overlay_for_skill_presets()
+
+        self.update_home_status_now()
+        self._update_skill_preset_summary()
+
+    def run_skill_auto_loop(self, preset_idx):
+        """스킬 자동 루프 - 특정 프리셋에 대해 실행"""
+        preset = self.skill_presets[preset_idx]
+
+        # 상태 라벨 업데이트
+        if preset['_status_label']:
+            self.after(0, lambda: preset['_status_label'].configure(text="⚡ 스킬 실행 중..."))
+
+        # 오버레이 상태 업데이트
+        self.after(0, lambda: self._update_overlay_preset_status(preset_idx, "active"))
+
+        # 마지막 사용 시간 초기화
+        preset['last_used'] = [0.0] * 9
+
+        while preset['active'] and preset['running']:
+            if preset['paused']:
                 time.sleep(0.01)
                 continue
 
             current_time = time.time()
 
-            for i, slot in enumerate(self.skill_slots):
+            for i, slot in enumerate(preset['slots']):
                 if not slot['enabled'].get():
                     continue
 
                 cooldown = slot['cooldown'].get()
                 if cooldown <= 0:
-                    continue  # 쿨타임이 0이하면 스킵
+                    continue
 
-                # 쿨타임 체크
-                if current_time - self.skill_last_used[i] >= cooldown:
+                if current_time - preset['last_used'][i] >= cooldown:
                     key = slot['key'].get()
 
-                    # 혼령사 모드: 스페이스바를 직접 누르고 있으면 스킵
-                    if self.honryeongsa_mode.get() and key.lower() == "space":
-                        if win32api.GetAsyncKeyState(0x20) & 0x8000:  # VK_SPACE
+                    # 혼령사 모드
+                    if preset['honryeongsa_mode'].get() and key.lower() == "space":
+                        if win32api.GetAsyncKeyState(0x20) & 0x8000:
                             continue
 
-                    try:
-                        # 마우스 클릭 처리
-                        if key == "좌클릭" or key == "왼클릭":
-                            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-                            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
-                        elif key == "우클릭":
-                            win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0)
-                            win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0)
-                        elif key.lower() == "mouse4":
-                            win32api.mouse_event(win32con.MOUSEEVENTF_XDOWN, 0, 0, win32con.XBUTTON1, 0)
-                            win32api.mouse_event(win32con.MOUSEEVENTF_XUP, 0, 0, win32con.XBUTTON1, 0)
-                        elif key.lower() == "mouse5":
-                            win32api.mouse_event(win32con.MOUSEEVENTF_XDOWN, 0, 0, win32con.XBUTTON2, 0)
-                            win32api.mouse_event(win32con.MOUSEEVENTF_XUP, 0, 0, win32con.XBUTTON2, 0)
-                        else:
-                            # 키보드 키
-                            keyboard.press_and_release(key.lower())
-                    except:
-                        pass
-                    self.skill_last_used[i] = current_time
+                    self._execute_skill_key(key)
+                    preset['last_used'][i] = current_time
 
-            time.sleep(0.01)  # CPU 절약 (10ms)
+            time.sleep(0.01)
 
-        self.skill_auto_active = False
-        self.after(0, lambda: self.skill_auto_status_label.configure(text="⏹️ 중지됨"))
-        self.after(0, lambda: self.skill_auto_pause_label.configure(text=""))
+        preset['active'] = False
+        if preset['_status_label']:
+            self.after(0, lambda: preset['_status_label'].configure(text="⏹️ 중지됨"))
+        if preset['_pause_label']:
+            self.after(0, lambda: preset['_pause_label'].configure(text=""))
 
-    def on_skill_auto_trigger_key(self, event):
-        """스킬 자동 트리거 키 핸들러 (시작/중지)"""
-        if not self.skill_auto_running:
+        # 오버레이 상태 업데이트
+        self.after(0, lambda: self._update_overlay_preset_status(preset_idx, "stopped"))
+
+    def on_skill_preset_trigger_key(self, preset_idx, event=None):
+        """프리셋별 핫키 핸들러"""
+        preset = self.skill_presets[preset_idx]
+
+        if not preset['running']:
             return
 
         if self.is_chatting():
             return
 
-        if not self.check_modifier(self.skill_auto_trigger_modifier.get()):
+        if not self.check_modifier(preset['trigger_modifier'].get()):
             return
 
         current_time = time.time()
-        if current_time - self.skill_auto_last_trigger_time < 0.3:
+        if current_time - preset['last_trigger_time'] < 0.3:
             return
-        self.skill_auto_last_trigger_time = current_time
+        preset['last_trigger_time'] = current_time
 
-        if self.skill_auto_active:
-            self.skill_auto_active = False
-            self.skill_auto_paused = False
-            self.after(0, lambda: self.skill_auto_status_label.configure(text="⏹️ 중지됨"))
-            self.after(0, lambda: self.skill_auto_pause_label.configure(text=""))
+        if preset['active']:
+            # 중지
+            preset['active'] = False
+            preset['paused'] = False
+            if preset['_status_label']:
+                self.after(0, lambda: preset['_status_label'].configure(text="⏹️ 중지됨"))
+            if preset['_pause_label']:
+                self.after(0, lambda: preset['_pause_label'].configure(text=""))
+            self.after(0, lambda: self._update_overlay_preset_status(preset_idx, "stopped"))
         else:
-            self.skill_auto_active = True
-            self.skill_auto_paused = False
-            threading.Thread(target=self.run_skill_auto_loop, daemon=True).start()
+            # 시작
+            preset['active'] = True
+            preset['paused'] = False
+            threading.Thread(target=self.run_skill_auto_loop, args=(preset_idx,), daemon=True).start()
 
     def on_skill_auto_enter_pause(self, event):
-        """Enter 키로 pause/resume 토글 (채팅용)"""
-        if not self.skill_auto_running or not self.skill_auto_active:
-            return  # 실행 중이 아니면 무시
+        """Enter 키로 모든 활성 프리셋 pause/resume 토글"""
+        for i, preset in enumerate(self.skill_presets):
+            if not preset['running'] or not preset['active']:
+                continue
 
-        self.skill_auto_paused = not self.skill_auto_paused
-        if self.skill_auto_paused:
-            self.after(0, lambda: self.skill_auto_pause_label.configure(text="⏸️ PAUSED (Enter로 재개)", text_color="#ff6600"))
-        else:
-            self.after(0, lambda: self.skill_auto_pause_label.configure(text=""))
+            preset['paused'] = not preset['paused']
+            if preset['paused']:
+                if preset['_pause_label']:
+                    self.after(0, lambda p=preset: p['_pause_label'].configure(
+                        text="⏸️ PAUSED (Enter로 재개)",
+                        text_color="#ff6600"
+                    ))
+                self.after(0, lambda idx=i: self._update_overlay_preset_status(idx, "paused"))
+            else:
+                if preset['_pause_label']:
+                    self.after(0, lambda p=preset: p['_pause_label'].configure(text=""))
+                self.after(0, lambda idx=i: self._update_overlay_preset_status(idx, "active"))
 
-    def change_skill_auto_trigger_key(self):
-        """스킬 자동 핫키 변경"""
+    def _update_overlay_preset_status(self, preset_idx, status):
+        """오버레이에서 프리셋 상태 업데이트"""
+        attr_name = f"skill_preset_{preset_idx}_running"
+        if hasattr(self, 'overlay_labels') and attr_name in self.overlay_labels:
+            label = self.overlay_labels[attr_name]
+            if status == "active":
+                label.configure(text="⚡ 실행중", fg="#00ff00")
+            elif status == "paused":
+                label.configure(text="⏸ 일시정지", fg="#ff6600")
+            else:  # stopped
+                label.configure(text="● OFF", fg="#666666")
+
+        # 오버레이 이름 라벨 색상도 업데이트
+        if hasattr(self, 'overlay_name_labels') and attr_name in self.overlay_name_labels:
+            name_label = self.overlay_name_labels[attr_name]
+            preset = self.skill_presets[preset_idx]
+            if preset['active']:
+                name_label.configure(fg="#00ff00")
+            else:
+                name_label.configure(fg="#ffffff")
+
+    def _update_skill_preset_summary(self):
+        """하단 프리셋 상태 요약 업데이트"""
+        if not hasattr(self, 'skill_preset_summary_labels'):
+            return
+
+        for i, preset in enumerate(self.skill_presets):
+            if i < len(self.skill_preset_summary_labels):
+                labels = self.skill_preset_summary_labels[i]
+                if preset['running']:
+                    if preset['active']:
+                        labels['status'].configure(text="RUN", text_color="#00ff00")
+                    else:
+                        labels['status'].configure(text="ON", text_color="#ffaa00")
+                else:
+                    labels['status'].configure(text="OFF", text_color="#666666")
+                labels['key'].configure(text=preset['trigger_key'].get().upper())
+
+    def change_skill_preset_trigger_key(self, preset_idx):
+        """특정 프리셋의 핫키 변경"""
         import customtkinter as ctk
-        import threading
+
+        preset = self.skill_presets[preset_idx]
 
         dialog = ctk.CTkToplevel(self)
-        dialog.title("핫키 설정")
+        dialog.title(f"프리셋 {preset_idx + 1} 핫키 설정")
         dialog.geometry("300x150")
         dialog.transient(self)
         dialog.grab_set()
@@ -174,22 +283,17 @@ class SkillAutoMixin:
         def on_key(event):
             if dialog_active[0]:
                 dialog_active[0] = False
-                # 충돌 체크 - 충돌 시 설정 안 함
-                conflict_msg = self.check_hotkey_conflict(event.name)
+                # 충돌 체크
+                conflict_msg = self.check_skill_preset_hotkey_conflict(preset_idx, event.name)
                 if conflict_msg:
                     from tkinter import messagebox
                     self.after(100, lambda: messagebox.showwarning("핫키 충돌", conflict_msg))
                     dialog.destroy()
                     return
-                self.skill_auto_trigger_key.set(event.name)
-                if hasattr(self, 'skill_auto_key_display'):
-                    self.skill_auto_key_display.configure(text=event.name.upper())
-                # 오버레이 핫키 라벨 즉시 업데이트
-                if hasattr(self, 'overlay_hotkey_labels') and 'skill_auto_running' in self.overlay_hotkey_labels:
-                    mod = self.skill_auto_trigger_modifier.get()
-                    key = event.name.upper()
-                    hotkey_text = f"{mod}+{key}" if mod != "없음" else key
-                    self.overlay_hotkey_labels['skill_auto_running'].configure(text=hotkey_text)
+                preset['trigger_key'].set(event.name)
+                if hasattr(self, 'skill_preset_key_display') and self.skill_current_preset_idx.get() == preset_idx:
+                    self.skill_preset_key_display.configure(text=event.name.upper())
+                self._update_skill_preset_summary()
                 self.setup_hotkey()
                 dialog.destroy()
 
@@ -210,21 +314,25 @@ class SkillAutoMixin:
             while dialog_active[0]:
                 if win32api.GetAsyncKeyState(0x05) & 0x8000:
                     dialog_active[0] = False
-                    self.after(0, lambda: self.skill_auto_trigger_key.set("mouse4"))
-                    self.after(0, lambda: self.skill_auto_key_display.configure(text="MOUSE4") if hasattr(self, 'skill_auto_key_display') else None)
+                    self.after(0, lambda: preset['trigger_key'].set("mouse4"))
+                    if hasattr(self, 'skill_preset_key_display') and self.skill_current_preset_idx.get() == preset_idx:
+                        self.after(0, lambda: self.skill_preset_key_display.configure(text="MOUSE4"))
                     while win32api.GetAsyncKeyState(0x05) & 0x8000:
                         time.sleep(0.01)
                     time.sleep(0.1)
+                    self.after(0, self._update_skill_preset_summary)
                     self.after(0, self.setup_hotkey)
                     self.after(0, dialog.destroy)
                     break
                 if win32api.GetAsyncKeyState(0x06) & 0x8000:
                     dialog_active[0] = False
-                    self.after(0, lambda: self.skill_auto_trigger_key.set("mouse5"))
-                    self.after(0, lambda: self.skill_auto_key_display.configure(text="MOUSE5") if hasattr(self, 'skill_auto_key_display') else None)
+                    self.after(0, lambda: preset['trigger_key'].set("mouse5"))
+                    if hasattr(self, 'skill_preset_key_display') and self.skill_current_preset_idx.get() == preset_idx:
+                        self.after(0, lambda: self.skill_preset_key_display.configure(text="MOUSE5"))
                     while win32api.GetAsyncKeyState(0x06) & 0x8000:
                         time.sleep(0.01)
                     time.sleep(0.1)
+                    self.after(0, self._update_skill_preset_summary)
                     self.after(0, self.setup_hotkey)
                     self.after(0, dialog.destroy)
                     break
@@ -240,13 +348,28 @@ class SkillAutoMixin:
 
         dialog.protocol("WM_DELETE_WINDOW", on_close)
 
-    def change_skill_slot_key(self, slot_idx):
-        """스킬 슬롯의 키 변경 (키보드 + 마우스 버튼)"""
+    def check_skill_preset_hotkey_conflict(self, preset_idx, new_key):
+        """프리셋 핫키 충돌 체크"""
+        new_key_lower = new_key.lower()
+
+        # 다른 프리셋과 충돌 체크
+        for i, preset in enumerate(self.skill_presets):
+            if i == preset_idx:
+                continue
+            if preset['trigger_key'].get().lower() == new_key_lower:
+                return f"프리셋 {i + 1}에서 이미 사용 중인 핫키입니다."
+
+        # 다른 기능과 충돌 체크
+        return self.check_hotkey_conflict(new_key)
+
+    def change_skill_preset_slot_key(self, preset_idx, slot_idx):
+        """특정 프리셋의 슬롯 키 변경"""
         import customtkinter as ctk
-        import threading
+
+        preset = self.skill_presets[preset_idx]
 
         dialog = ctk.CTkToplevel(self)
-        dialog.title(f"슬롯 {slot_idx + 1} 키 설정")
+        dialog.title(f"프리셋 {preset_idx + 1} - 슬롯 {slot_idx + 1} 키 설정")
         dialog.geometry("320x180")
         dialog.transient(self)
         dialog.grab_set()
@@ -259,9 +382,9 @@ class SkillAutoMixin:
         dialog_active = [True]
 
         def update_slot_key(key_name):
-            self.skill_slots[slot_idx]['key'].set(key_name)
-            if hasattr(self, 'skill_slot_widgets') and slot_idx < len(self.skill_slot_widgets):
-                self.skill_slot_widgets[slot_idx]['key_label'].configure(text=key_name.upper())
+            preset['slots'][slot_idx]['key'].set(key_name)
+            if preset['_slot_widgets'] and slot_idx < len(preset['_slot_widgets']):
+                preset['_slot_widgets'][slot_idx]['key_label'].configure(text=key_name.upper())
 
         def on_key(event):
             if dialog_active[0]:
@@ -315,3 +438,23 @@ class SkillAutoMixin:
             dialog.destroy()
 
         dialog.protocol("WM_DELETE_WINDOW", on_close)
+
+    # ===============================
+    # 하위 호환성을 위한 래퍼 메서드들
+    # ===============================
+
+    def toggle_skill_auto_running(self):
+        """하위 호환성 - 첫 번째 프리셋 토글"""
+        self.toggle_skill_preset_running(0)
+
+    def on_skill_auto_trigger_key(self, event):
+        """하위 호환성 - 첫 번째 프리셋 트리거"""
+        self.on_skill_preset_trigger_key(0, event)
+
+    def change_skill_auto_trigger_key(self):
+        """하위 호환성 - 첫 번째 프리셋 핫키 변경"""
+        self.change_skill_preset_trigger_key(0)
+
+    def change_skill_slot_key(self, slot_idx):
+        """하위 호환성 - 첫 번째 프리셋 슬롯 키 변경"""
+        self.change_skill_preset_slot_key(0, slot_idx)

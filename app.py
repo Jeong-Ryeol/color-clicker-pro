@@ -133,7 +133,7 @@ class ColorClickerApp(
     # 핫키 관련
     # =========================================
     def setup_hotkey(self):
-        """핫키 설정"""
+        """핫키 설정 - 5개 스킬 프리셋 지원"""
         keyboard.unhook_all()
         # 키보드 핫키 등록 (마우스 버튼 제외)
         if not self.is_mouse_key(self.trigger_key.get()):
@@ -148,8 +148,17 @@ class ColorClickerApp(
             keyboard.on_press_key(self.consume_trigger_key.get(), self.on_consume_trigger_key, suppress=False)
         if not self.is_mouse_key(self.consume2_trigger_key.get()):
             keyboard.on_press_key(self.consume2_trigger_key.get(), self.on_consume2_trigger_key, suppress=False)
-        if not self.is_mouse_key(self.skill_auto_trigger_key.get()):
-            keyboard.on_press_key(self.skill_auto_trigger_key.get(), self.on_skill_auto_trigger_key, suppress=False)
+
+        # 5개 스킬 프리셋 각각의 핫키 등록
+        for i, preset in enumerate(self.skill_presets):
+            key = preset['trigger_key'].get()
+            if not self.is_mouse_key(key):
+                # 클로저로 인덱스 캡처
+                keyboard.on_press_key(
+                    key,
+                    lambda e, idx=i: self.on_skill_preset_trigger_key(idx, e),
+                    suppress=False
+                )
 
         # Enter로 pause/resume (스킬 자동 + 사기)
         keyboard.on_press_key('enter', self.on_combined_enter_pause, suppress=False)
@@ -227,7 +236,7 @@ class ColorClickerApp(
         threading.Thread(target=poll_mouse, daemon=True).start()
 
     def on_mouse_button(self, button):
-        """마우스 버튼 핸들러"""
+        """마우스 버튼 핸들러 - 5개 스킬 프리셋 지원"""
         if self.trigger_key.get().lower() == button:
             self.on_trigger_key(None)
         if self.inv_trigger_key.get().lower() == button:
@@ -240,8 +249,10 @@ class ColorClickerApp(
             self.on_consume_trigger_key(None)
         if self.consume2_trigger_key.get().lower() == button:
             self.on_consume2_trigger_key(None)
-        if self.skill_auto_trigger_key.get().lower() == button:
-            self.on_skill_auto_trigger_key(None)
+        # 5개 스킬 프리셋 마우스 핫키 체크
+        for i, preset in enumerate(self.skill_presets):
+            if preset['trigger_key'].get().lower() == button:
+                self.on_skill_preset_trigger_key(i, None)
 
     # =========================================
     # Home 탭 토글 함수들
@@ -306,7 +317,7 @@ class ColorClickerApp(
         dialog.protocol("WM_DELETE_WINDOW", on_close)
 
     def on_emergency_stop(self, event=None):
-        """긴급 정지 - 실행 중인 클릭/매크로 동작만 즉시 중지"""
+        """긴급 정지 - 실행 중인 클릭/매크로 동작만 즉시 중지 (5개 스킬 프리셋 지원)"""
         self.detection_active = False
         self.inv_cleanup_active = False
         self.discard_active = False
@@ -315,8 +326,19 @@ class ColorClickerApp(
         self.consume_paused = False
         self.consume2_active = False
         self.consume2_paused = False
-        self.skill_auto_active = False
-        self.skill_auto_paused = False
+
+        # 5개 스킬 프리셋 모두 중지
+        for i, preset in enumerate(self.skill_presets):
+            preset['active'] = False
+            preset['paused'] = False
+            if preset['running'] and preset['_status_label']:
+                preset['_status_label'].configure(
+                    text=f"🔴 [{preset['trigger_key'].get().upper()}] 키로 시작"
+                )
+            if preset['_pause_label']:
+                preset['_pause_label'].configure(text="")
+            # 오버레이 상태 업데이트
+            self._update_overlay_preset_status(i, "stopped")
 
         if self.is_running:
             self.status_label.configure(text=f"🔴 [{self.trigger_key.get().upper()}] 키로 시작")
@@ -330,18 +352,16 @@ class ColorClickerApp(
             self.consume_status_label.configure(text=f"🔴 [{self.consume_trigger_key.get().upper()}] 키로 시작")
         if self.consume2_running:
             self.consume2_status_label.configure(text=f"🔴 [{self.consume2_trigger_key.get().upper()}] 키로 시작")
-        if self.skill_auto_running:
-            self.skill_auto_status_label.configure(text=f"🔴 [{self.skill_auto_trigger_key.get().upper()}] 키로 시작")
-            if hasattr(self, 'skill_auto_pause_label'):
-                self.skill_auto_pause_label.configure(text="")
 
     def is_chatting(self):
-        """채팅 중인지 확인 (pause 상태면 채팅 중으로 간주)"""
-        return (
-            getattr(self, 'consume_paused', False) or
-            getattr(self, 'consume2_paused', False) or
-            getattr(self, 'skill_auto_paused', False)
-        )
+        """채팅 중인지 확인 (pause 상태면 채팅 중으로 간주) - 5개 스킬 프리셋 지원"""
+        if getattr(self, 'consume_paused', False) or getattr(self, 'consume2_paused', False):
+            return True
+        # 5개 프리셋 중 하나라도 paused면 채팅 중
+        for preset in self.skill_presets:
+            if preset['paused']:
+                return True
+        return False
 
     def apply_auto_start(self):
         """자동 시작 적용"""
@@ -531,16 +551,22 @@ class ColorClickerApp(
                 'action_key': self.consume2_action_key.get()
             },
             'skill_auto': {
-                'trigger_key': self.skill_auto_trigger_key.get(),
-                'trigger_modifier': self.skill_auto_trigger_modifier.get(),
-                'honryeongsa_mode': self.honryeongsa_mode.get(),
-                'slots': [
+                'presets': [
                     {
-                        'enabled': slot['enabled'].get(),
-                        'key': slot['key'].get(),
-                        'cooldown': slot['cooldown'].get()
+                        'name': preset['name'].get(),
+                        'trigger_key': preset['trigger_key'].get(),
+                        'trigger_modifier': preset['trigger_modifier'].get(),
+                        'honryeongsa_mode': preset['honryeongsa_mode'].get(),
+                        'slots': [
+                            {
+                                'enabled': slot['enabled'].get(),
+                                'key': slot['key'].get(),
+                                'cooldown': slot['cooldown'].get()
+                            }
+                            for slot in preset['slots']
+                        ]
                     }
-                    for slot in self.skill_slots
+                    for preset in self.skill_presets
                 ]
             },
             'overlay': {
@@ -703,26 +729,43 @@ class ColorClickerApp(
                 if hasattr(self, 'consume2_action_display'):
                     self.consume2_action_display.configure(text=action_key2.upper())
 
-            # 스킬 자동 설정
+            # 스킬 자동 설정 (5개 프리셋 지원 + 마이그레이션)
             skill_auto = config.get('skill_auto', {})
             if skill_auto:
-                self.skill_auto_trigger_key.set(skill_auto.get('trigger_key', 'f6'))
-                self.skill_auto_trigger_modifier.set(skill_auto.get('trigger_modifier', '없음'))
-                self.honryeongsa_mode.set(skill_auto.get('honryeongsa_mode', False))
-                if hasattr(self, 'skill_auto_key_display'):
-                    self.skill_auto_key_display.configure(text=self.skill_auto_trigger_key.get().upper())
+                presets_data = skill_auto.get('presets', [])
 
-                slots_data = skill_auto.get('slots', [])
-                for i, slot_data in enumerate(slots_data):
-                    if i < len(self.skill_slots):
-                        self.skill_slots[i]['enabled'].set(slot_data.get('enabled', False))
-                        self.skill_slots[i]['key'].set(slot_data.get('key', str(i + 1)))
-                        self.skill_slots[i]['cooldown'].set(slot_data.get('cooldown', 0.0))
-                        # key_label UI도 업데이트
-                        if hasattr(self, 'skill_slot_widgets') and i < len(self.skill_slot_widgets):
-                            self.skill_slot_widgets[i]['key_label'].configure(
-                                text=slot_data.get('key', str(i + 1)).upper()
-                            )
+                # 기존 단일 프리셋 설정 마이그레이션
+                if not presets_data and 'trigger_key' in skill_auto:
+                    presets_data = [{
+                        'name': '프리셋 1',
+                        'trigger_key': skill_auto.get('trigger_key', 'f6'),
+                        'trigger_modifier': skill_auto.get('trigger_modifier', '없음'),
+                        'honryeongsa_mode': skill_auto.get('honryeongsa_mode', False),
+                        'slots': skill_auto.get('slots', [])
+                    }]
+
+                # 프리셋 데이터 로드
+                for i, preset_data in enumerate(presets_data):
+                    if i >= len(self.skill_presets):
+                        break
+
+                    preset = self.skill_presets[i]
+                    preset['name'].set(preset_data.get('name', f'프리셋 {i + 1}'))
+                    preset['trigger_key'].set(preset_data.get('trigger_key', f'f{6 + i}'))
+                    preset['trigger_modifier'].set(preset_data.get('trigger_modifier', '없음'))
+                    preset['honryeongsa_mode'].set(preset_data.get('honryeongsa_mode', False))
+
+                    slots_data = preset_data.get('slots', [])
+                    for j, slot_data in enumerate(slots_data):
+                        if j >= len(preset['slots']):
+                            break
+                        preset['slots'][j]['enabled'].set(slot_data.get('enabled', False))
+                        preset['slots'][j]['key'].set(slot_data.get('key', str(j + 1)))
+                        preset['slots'][j]['cooldown'].set(slot_data.get('cooldown', 0.0))
+
+                # 프리셋 요약 라벨 업데이트
+                if hasattr(self, '_update_skill_preset_summary'):
+                    self._update_skill_preset_summary()
 
             # 오버레이 설정
             overlay = config.get('overlay', {})
