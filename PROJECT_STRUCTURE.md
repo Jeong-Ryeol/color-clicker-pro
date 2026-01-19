@@ -146,7 +146,7 @@ numpy>=1.21.0          # 배열 연산 (색상 비교)
 
 버전은 `constants.py`에서 관리:
 ```python
-VERSION = "1.8.6"
+VERSION = "1.8.8"
 ```
 
 버전 변경 시 이 파일만 수정하면 됨.
@@ -208,3 +208,38 @@ VERSION = "1.8.6"
 ### 핫키 작동 안 함
 - `keyboard` 라이브러리는 관리자 권한 필요할 수 있음
 - 다른 프로그램과 핫키 충돌 확인
+- v1.8.8부터 Lock 기반 동기화 적용으로 안정성 개선됨
+
+---
+
+## 핫키 시스템 (v1.8.8+)
+
+### 구조
+```
+app.py
+├── _hotkey_lock          # threading.Lock() - 동기화용
+├── setup_hotkey()        # Lock 안에서 unhook_all + 재등록
+└── 각 기능별 핫키 핸들러
+```
+
+### 핫키 등록 흐름
+```python
+def setup_hotkey(self):
+    with self._hotkey_lock:           # Lock 획득
+        keyboard.unhook_all()          # 모든 핫키 해제
+        # 벨리알, 인벤토리, 버리기, 팔기, 먹기1, 먹기2
+        # 스킬 프리셋 5개, Enter, 긴급정지 등록
+        ...
+```
+
+### 핫키 변경 다이얼로그
+각 `change_*_trigger_key()` 함수:
+1. 다이얼로그 열림
+2. 키보드/마우스 입력 대기 (2개 스레드)
+3. 입력 감지 시 `setup_hotkey()` 호출
+4. Lock으로 인해 동시 호출 시에도 순차 처리
+
+### 주의사항
+- `keyboard.unhook_all()`은 반드시 `setup_hotkey()` 내부에서만 호출
+- Lock 밖에서 `unhook_all()` 호출 금지 (다른 기능 핫키 해제됨)
+- 여러 기능 동시 사용 가능 (먹기 + 스킬 P1 + P2 등)
