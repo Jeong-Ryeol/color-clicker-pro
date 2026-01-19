@@ -218,8 +218,7 @@ class Consume2Mixin:
 
         def on_close():
             dialog_active[0] = False
-            keyboard.unhook_all()
-            self.setup_hotkey()
+            self.setup_hotkey()  # Lock 안에서 unhook_all + 재등록
             dialog.destroy()
 
         dialog.protocol("WM_DELETE_WINDOW", on_close)

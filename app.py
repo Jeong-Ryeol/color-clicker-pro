@@ -129,47 +129,51 @@ class ColorClickerApp(
         self.home_key_labels = {}
         self.home_status_labels = {}
 
+        # 핫키 설정 Lock (동시 호출 방지)
+        self._hotkey_lock = threading.Lock()
+
     # =========================================
     # 핫키 관련
     # =========================================
     def setup_hotkey(self):
         """핫키 설정 - 5개 스킬 프리셋 지원"""
-        keyboard.unhook_all()
-        # 키보드 핫키 등록 (마우스 버튼 제외)
-        if not self.is_mouse_key(self.trigger_key.get()):
-            keyboard.on_press_key(self.trigger_key.get(), self.on_trigger_key, suppress=False)
-        if not self.is_mouse_key(self.inv_trigger_key.get()):
-            keyboard.on_press_key(self.inv_trigger_key.get(), self.on_inv_trigger_key, suppress=False)
-        if not self.is_mouse_key(self.discard_trigger_key.get()):
-            keyboard.on_press_key(self.discard_trigger_key.get(), self.on_discard_trigger_key, suppress=False)
-        if not self.is_mouse_key(self.sell_trigger_key.get()):
-            keyboard.on_press_key(self.sell_trigger_key.get(), self.on_sell_trigger_key, suppress=False)
-        if not self.is_mouse_key(self.consume_trigger_key.get()):
-            keyboard.on_press_key(self.consume_trigger_key.get(), self.on_consume_trigger_key, suppress=False)
-        if not self.is_mouse_key(self.consume2_trigger_key.get()):
-            keyboard.on_press_key(self.consume2_trigger_key.get(), self.on_consume2_trigger_key, suppress=False)
+        with self._hotkey_lock:
+            keyboard.unhook_all()
+            # 키보드 핫키 등록 (마우스 버튼 제외)
+            if not self.is_mouse_key(self.trigger_key.get()):
+                keyboard.on_press_key(self.trigger_key.get(), self.on_trigger_key, suppress=False)
+            if not self.is_mouse_key(self.inv_trigger_key.get()):
+                keyboard.on_press_key(self.inv_trigger_key.get(), self.on_inv_trigger_key, suppress=False)
+            if not self.is_mouse_key(self.discard_trigger_key.get()):
+                keyboard.on_press_key(self.discard_trigger_key.get(), self.on_discard_trigger_key, suppress=False)
+            if not self.is_mouse_key(self.sell_trigger_key.get()):
+                keyboard.on_press_key(self.sell_trigger_key.get(), self.on_sell_trigger_key, suppress=False)
+            if not self.is_mouse_key(self.consume_trigger_key.get()):
+                keyboard.on_press_key(self.consume_trigger_key.get(), self.on_consume_trigger_key, suppress=False)
+            if not self.is_mouse_key(self.consume2_trigger_key.get()):
+                keyboard.on_press_key(self.consume2_trigger_key.get(), self.on_consume2_trigger_key, suppress=False)
 
-        # 5개 스킬 프리셋 각각의 핫키 등록
-        for i, preset in enumerate(self.skill_presets):
-            key = preset['trigger_key'].get()
-            if not self.is_mouse_key(key):
-                # 클로저로 인덱스 캡처
-                keyboard.on_press_key(
-                    key,
-                    lambda e, idx=i: self.on_skill_preset_trigger_key(idx, e),
-                    suppress=False
-                )
+            # 5개 스킬 프리셋 각각의 핫키 등록
+            for i, preset in enumerate(self.skill_presets):
+                key = preset['trigger_key'].get()
+                if not self.is_mouse_key(key):
+                    # 클로저로 인덱스 캡처
+                    keyboard.on_press_key(
+                        key,
+                        lambda e, idx=i: self.on_skill_preset_trigger_key(idx, e),
+                        suppress=False
+                    )
 
-        # Enter로 pause/resume (스킬 자동 + 사기)
-        keyboard.on_press_key('enter', self.on_combined_enter_pause, suppress=False)
+            # Enter로 pause/resume (스킬 자동 + 사기)
+            keyboard.on_press_key('enter', self.on_combined_enter_pause, suppress=False)
 
-        # 긴급 정지 키 등록
-        if not self.is_mouse_key(self.emergency_stop_key.get()):
-            keyboard.on_press_key(self.emergency_stop_key.get(), self.on_emergency_stop, suppress=False)
+            # 긴급 정지 키 등록
+            if not self.is_mouse_key(self.emergency_stop_key.get()):
+                keyboard.on_press_key(self.emergency_stop_key.get(), self.on_emergency_stop, suppress=False)
 
-        # 마우스 폴링 시작 (한 번만)
-        if not hasattr(self, 'mouse_polling_active') or not self.mouse_polling_active:
-            self.start_mouse_polling()
+            # 마우스 폴링 시작 (한 번만)
+            if not hasattr(self, 'mouse_polling_active') or not self.mouse_polling_active:
+                self.start_mouse_polling()
 
     def is_mouse_key(self, key):
         """마우스 키 여부 확인"""
@@ -310,8 +314,7 @@ class ColorClickerApp(
 
         def on_close():
             dialog_active[0] = False
-            keyboard.unhook_all()
-            self.setup_hotkey()
+            self.setup_hotkey()  # Lock 안에서 unhook_all + 재등록
             dialog.destroy()
 
         dialog.protocol("WM_DELETE_WINDOW", on_close)
