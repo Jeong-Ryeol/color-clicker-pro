@@ -45,7 +45,8 @@ class SkillAutoMixin:
                 slot = {
                     'enabled': ctk.BooleanVar(value=False),
                     'key': ctk.StringVar(value=str(j + 1)),
-                    'cooldown': ctk.DoubleVar(value=0.0)
+                    'cooldown': ctk.DoubleVar(value=0.0),
+                    'hold': ctk.BooleanVar(value=False)  # hold 모드: 꾹 누르기
                 }
                 preset['slots'].append(slot)
             self.skill_presets.append(preset)
@@ -82,6 +83,47 @@ class SkillAutoMixin:
                 keyboard.press_and_release(key.lower())
         except:
             pass
+
+    def _press_skill_key(self, key):
+        """스킬 키 누르기 (hold 모드용 - 누르고 유지)"""
+        import win32con
+        try:
+            if key == "좌클릭" or key == "왼클릭":
+                win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+            elif key == "우클릭":
+                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0)
+            elif key.lower() == "mouse4":
+                win32api.mouse_event(win32con.MOUSEEVENTF_XDOWN, 0, 0, win32con.XBUTTON1, 0)
+            elif key.lower() == "mouse5":
+                win32api.mouse_event(win32con.MOUSEEVENTF_XDOWN, 0, 0, win32con.XBUTTON2, 0)
+            else:
+                keyboard.press(key.lower())
+        except:
+            pass
+
+    def _release_skill_key(self, key):
+        """스킬 키 떼기 (hold 모드용)"""
+        import win32con
+        try:
+            if key == "좌클릭" or key == "왼클릭":
+                win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+            elif key == "우클릭":
+                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0)
+            elif key.lower() == "mouse4":
+                win32api.mouse_event(win32con.MOUSEEVENTF_XUP, 0, 0, win32con.XBUTTON1, 0)
+            elif key.lower() == "mouse5":
+                win32api.mouse_event(win32con.MOUSEEVENTF_XUP, 0, 0, win32con.XBUTTON2, 0)
+            else:
+                keyboard.release(key.lower())
+        except:
+            pass
+
+    def _release_all_hold_keys(self, preset):
+        """프리셋의 모든 hold 키 떼기"""
+        for i, slot in enumerate(preset['slots']):
+            if slot['enabled'].get() and slot['hold'].get():
+                key = slot['key'].get()
+                self._release_skill_key(key)
 
     def toggle_skill_preset_running(self, preset_idx):
         """특정 프리셋 시작/중지"""
@@ -136,8 +178,16 @@ class SkillAutoMixin:
         # 마지막 사용 시간 초기화
         preset['last_used'] = [0.0] * 9
 
+        # hold 모드 키 상태 추적 (눌려있는지 여부)
+        hold_key_pressed = [False] * 9
+
         while preset['active'] and preset['running']:
             if preset['paused']:
+                # 일시정지 시 hold 키 모두 떼기
+                for i, slot in enumerate(preset['slots']):
+                    if hold_key_pressed[i] and slot['hold'].get():
+                        self._release_skill_key(slot['key'].get())
+                        hold_key_pressed[i] = False
                 time.sleep(0.01)
                 continue
 
@@ -145,24 +195,43 @@ class SkillAutoMixin:
 
             for i, slot in enumerate(preset['slots']):
                 if not slot['enabled'].get():
+                    # 비활성화된 슬롯의 hold 키 떼기
+                    if hold_key_pressed[i]:
+                        self._release_skill_key(slot['key'].get())
+                        hold_key_pressed[i] = False
                     continue
 
                 cooldown = slot['cooldown'].get()
                 if cooldown <= 0:
                     continue
 
-                if current_time - preset['last_used'][i] >= cooldown:
-                    key = slot['key'].get()
+                key = slot['key'].get()
+                is_hold = slot['hold'].get()
 
+                if current_time - preset['last_used'][i] >= cooldown:
                     # 혼령사 모드
                     if preset['honryeongsa_mode'].get() and key.lower() == "space":
                         if win32api.GetAsyncKeyState(0x20) & 0x8000:
                             continue
 
-                    self._execute_skill_key(key)
+                    if is_hold:
+                        # hold 모드: 아직 안 눌렸으면 누르기
+                        if not hold_key_pressed[i]:
+                            self._press_skill_key(key)
+                            hold_key_pressed[i] = True
+                    else:
+                        # 일반 모드: 누르고 떼기
+                        self._execute_skill_key(key)
+
                     preset['last_used'][i] = current_time
 
             time.sleep(0.01)
+
+        # 루프 종료 시 모든 hold 키 떼기
+        for i, slot in enumerate(preset['slots']):
+            if hold_key_pressed[i]:
+                self._release_skill_key(slot['key'].get())
+                hold_key_pressed[i] = False
 
         preset['active'] = False
         if preset['_status_label']:

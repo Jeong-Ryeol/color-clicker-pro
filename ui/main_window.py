@@ -1051,10 +1051,22 @@ class MainWindowMixin:
                               command=lambda p=preset_idx, s=slot_idx: self.change_skill_preset_slot_key(p, s)).pack(side="right")
 
                 cd_frame = ctk.CTkFrame(slot_frame, fg_color="transparent")
-                cd_frame.pack(fill="x", padx=5, pady=5)
+                cd_frame.pack(fill="x", padx=5, pady=2)
                 ctk.CTkLabel(cd_frame, text="쿨타임:", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="left")
                 ctk.CTkLabel(cd_frame, text="초", font=ctk.CTkFont(family=DEFAULT_FONT, size=11)).pack(side="right")
                 create_numeric_entry(cd_frame, slot['cooldown'], width=50, is_float=True).pack(side="right", padx=5)
+
+                # Hold 모드 체크박스
+                hold_frame = ctk.CTkFrame(slot_frame, fg_color="transparent")
+                hold_frame.pack(fill="x", padx=5, pady=(0, 5))
+                ctk.CTkCheckBox(hold_frame, text="Hold",
+                                variable=slot['hold'],
+                                font=ctk.CTkFont(family=DEFAULT_FONT, size=10),
+                                width=20, height=20,
+                                checkbox_width=16, checkbox_height=16).pack(side="left")
+                ctk.CTkLabel(hold_frame, text="(꾹 누르기)",
+                             font=ctk.CTkFont(family=DEFAULT_FONT, size=9),
+                             text_color="#888888").pack(side="left", padx=3)
 
                 preset['_slot_widgets'].append({
                     'frame': slot_frame,

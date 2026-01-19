@@ -576,7 +576,8 @@ class ColorClickerApp(
                             {
                                 'enabled': slot['enabled'].get(),
                                 'key': slot['key'].get(),
-                                'cooldown': slot['cooldown'].get()
+                                'cooldown': slot['cooldown'].get(),
+                                'hold': slot['hold'].get()
                             }
                             for slot in preset['slots']
                         ]
@@ -777,6 +778,7 @@ class ColorClickerApp(
                         preset['slots'][j]['enabled'].set(slot_data.get('enabled', False))
                         preset['slots'][j]['key'].set(slot_data.get('key', str(j + 1)))
                         preset['slots'][j]['cooldown'].set(slot_data.get('cooldown', 0.0))
+                        preset['slots'][j]['hold'].set(slot_data.get('hold', False))
 
                 # 프리셋 요약 라벨 업데이트
                 if hasattr(self, '_update_skill_preset_summary'):
